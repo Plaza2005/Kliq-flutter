@@ -1,0 +1,37 @@
+name: kliq
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  cached_network_image: ^3.4.1
+  camera: ^0.12.0+1
+  dio: ^5.10.0
+  file_picker: ^3.0.4
+  firebase_core: ^4.11.0
+  firebase_messaging: ^16.4.1
+  flutter:
+    sdk: flutter
+  go_router: ^17.3.0
+  google_fonts: ^8.1.0
+  image_picker: ^1.2.3
+  intl: ^0.20.3
+  media_kit: ^1.2.6
+  media_kit_libs_video: ^1.0.7
+  media_kit_video: ^2.0.1
+  provider: ^6.1.5+1
+  shared_preferences: ^2.5.5
+  supabase_flutter: ^2.16.0
+  uuid: ^4.5.3
+  web_socket_channel: ^3.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
