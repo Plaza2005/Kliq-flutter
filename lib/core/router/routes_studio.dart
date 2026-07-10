@@ -1,58 +1,38 @@
 import 'package:go_router/go_router.dart';
 
-import '../../features/common/placeholder_page.dart';
+import '../../features/studio/amplify_analytics_pages.dart';
+import '../../features/studio/channel_studios.dart';
+import '../../features/studio/module_studios.dart';
+import '../../features/studio/studio_home_page.dart';
+import '../../features/studio/upload_hub_page.dart';
 
 /// Studio & creator tools.
 ///
-/// PRODUCT REQUIREMENT — upload hub: the Studio "Upload" button opens
-/// /studio/upload, a hub listing every part of the app content can go to
-/// (Posts, Reels, KliqTube, Stories, Live, Marketplace, KliqStream). Each
-/// tab NAVIGATES to that module's own independent studio page (e.g. the
-/// KliqTube tab goes to /studio/kliqtube — KliqTube Studio) instead of
-/// uploading in place.
+/// The Upload button in Studio opens /studio/upload (the Upload Hub), which
+/// lists every publishable part of the app; each entry NAVIGATES to that
+/// module's own independent studio page where the actual upload happens.
 final studioRoutes = <RouteBase>[
+  GoRoute(path: '/studio', builder: (c, s) => const StudioHomePage()),
   GoRoute(
-    path: '/studio',
-    builder: (c, s) => const PlaceholderPage(title: 'Studio'),
-  ),
+      path: '/studio/upload', builder: (c, s) => const UploadHubPage()),
   GoRoute(
-    path: '/studio/upload',
-    builder: (c, s) => const PlaceholderPage(title: 'Upload Hub'),
-  ),
+      path: '/studio/posts', builder: (c, s) => const PostsStudioPage()),
   GoRoute(
-    path: '/studio/posts',
-    builder: (c, s) => const PlaceholderPage(title: 'Posts Studio'),
-  ),
+      path: '/studio/reels', builder: (c, s) => const ReelsStudioPage()),
   GoRoute(
-    path: '/studio/reels',
-    builder: (c, s) => const PlaceholderPage(title: 'Reels Studio'),
-  ),
+      path: '/studio/kliqtube',
+      builder: (c, s) => const KliqTubeStudioPage()),
   GoRoute(
-    path: '/studio/kliqtube',
-    builder: (c, s) => const PlaceholderPage(title: 'KliqTube Studio'),
-  ),
+      path: '/studio/stories',
+      builder: (c, s) => const StoriesStudioPage()),
   GoRoute(
-    path: '/studio/stories',
-    builder: (c, s) => const PlaceholderPage(title: 'Stories Studio'),
-  ),
+      path: '/studio/live', builder: (c, s) => const LiveStudioPage()),
   GoRoute(
-    path: '/studio/live',
-    builder: (c, s) => const PlaceholderPage(title: 'Live Studio'),
-  ),
+      path: '/studio/marketplace',
+      builder: (c, s) => const MarketplaceStudioPage()),
   GoRoute(
-    path: '/studio/marketplace',
-    builder: (c, s) => const PlaceholderPage(title: 'Marketplace Studio'),
-  ),
-  GoRoute(
-    path: '/studio/kliqstream',
-    builder: (c, s) => const PlaceholderPage(title: 'KliqStream Studio'),
-  ),
-  GoRoute(
-    path: '/amplify',
-    builder: (c, s) => const PlaceholderPage(title: 'Amplify'),
-  ),
-  GoRoute(
-    path: '/analytics',
-    builder: (c, s) => const PlaceholderPage(title: 'Analytics'),
-  ),
+      path: '/studio/kliqstream',
+      builder: (c, s) => const KliqStreamStudioPage()),
+  GoRoute(path: '/amplify', builder: (c, s) => const AmplifyPage()),
+  GoRoute(path: '/analytics', builder: (c, s) => const AnalyticsPage()),
 ];

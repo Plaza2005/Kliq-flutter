@@ -140,6 +140,34 @@ class DemoBackend {
       };
     }
 
+    if (p == '/amplify/campaigns') return s.amplifyCampaigns;
+    if (p == '/analytics/overview') {
+      final days = switch (query['range']) {
+        '30D' => 30,
+        '90D' => 90,
+        _ => 7,
+      };
+      final points = days <= 7 ? days : 12;
+      return {
+        'views': 4200 * days ~/ 7,
+        'newFollowers': 86 * days ~/ 7,
+        'likes': 1240 * days ~/ 7,
+        'revenue': 465 * days ~/ 7,
+        'topLocation': 'Windhoek, NA',
+        'topAge': '18–24',
+        'peakHours': '19:00–22:00',
+        'series': [
+          for (var i = 0; i < points; i++)
+            {
+              'label': DateTime.now()
+                  .subtract(Duration(days: (points - 1 - i) * days ~/ points))
+                  .toIso8601String()
+                  .substring(5, 10),
+              'value': 320 + ((i * 137) % 480),
+            }
+        ],
+      };
+    }
     if (p == '/users/suggestions') {
       return s.users.where((u) => !s.followedUserIds.contains(u['id'])).toList();
     }
@@ -262,6 +290,11 @@ class DemoBackend {
       return post;
     }
 
+    if (seg.length == 2 && seg[0] == 'posts' && method == 'DELETE') {
+      s.posts.removeWhere((x) => x['id'] == seg[1]);
+      return {'ok': true};
+    }
+
     if (seg.length >= 3 && seg[0] == 'posts') {
       final id = seg[1];
       final post = s.posts.where((x) => x['id'] == id).firstOrNull;
@@ -370,6 +403,73 @@ class DemoBackend {
       final c = s.communities.where((x) => x['id'] == seg[1]).firstOrNull;
       if (c != null) c['isJoined'] = !(c['isJoined'] as bool);
       return {'joined': c?['isJoined'] ?? true};
+    }
+
+    if (p == '/kliqtube' && method == 'POST') {
+      final video = {
+        'id': s.nextId('t'),
+        'author': s.me,
+        'title': body['title'] ?? 'Untitled video',
+        'description': body['description'] ?? '',
+        'videoUrl': body['videoUrl'] ?? DemoStore.sampleVideos.first,
+        'thumbnailUrl': body['thumbnailUrl'] ?? DemoStore.img(9600, w: 1280, h: 720),
+        'duration': 600,
+        'viewCount': 0,
+        'likeCount': 0,
+        'createdAt': DateTime.now().toIso8601String(),
+      };
+      s.tubeVideos.insert(0, video);
+      return video;
+    }
+    if (p == '/reels' && method == 'POST') {
+      final reel = {
+        'id': s.nextId('r'),
+        'author': s.me,
+        'videoUrl': body['videoUrl'] ?? DemoStore.sampleVideos.first,
+        'thumbnailUrl': DemoStore.img(9700, w: 720, h: 1280),
+        'caption': body['caption'] ?? '',
+        'soundName': 'Original audio · ${s.me['username']}',
+        'likeCount': 0,
+        'commentCount': 0,
+        'shareCount': 0,
+        'viewCount': 0,
+        'isLiked': false,
+        'createdAt': DateTime.now().toIso8601String(),
+      };
+      s.reels.insert(0, reel);
+      return reel;
+    }
+    if (p == '/marketplace/products' && method == 'POST') {
+      final product = {
+        'id': s.nextId('prod'),
+        'seller': s.me,
+        'name': body['name'] ?? 'New product',
+        'description': body['description'] ?? '',
+        'price': body['price'] ?? 0,
+        'currency': 'N\$',
+        'imageUrls': body['imageUrls'] ?? [DemoStore.img(9800)],
+        'category': body['category'] ?? 'Physical',
+        'rating': 0.0,
+        'salesCount': 0,
+        'inStock': true,
+      };
+      s.products.insert(0, product);
+      return product;
+    }
+    if (p == '/kliqstream/submissions') {
+      return {'ok': true, 'status': 'under_review'};
+    }
+    if (p == '/amplify/campaigns' && method == 'POST') {
+      final campaign = {
+        'id': s.nextId('amp'),
+        'budget': body['budget'] ?? 100,
+        'days': body['days'] ?? 3,
+        'reached': 0,
+        'status': 'active',
+        'createdAt': DateTime.now().toIso8601String(),
+      };
+      s.amplifyCampaigns.insert(0, campaign);
+      return campaign;
     }
 
     if (p == '/auth/logout') return {'ok': true};

@@ -26,6 +26,7 @@ class DemoStore {
   final messages = <String, List<Map<String, dynamic>>>{};
   final notifications = <Map<String, dynamic>>[];
   final walletTransactions = <Map<String, dynamic>>[];
+  final amplifyCampaigns = <Map<String, dynamic>>[];
   final likedPostIds = <String>{};
   final savedPostIds = <String>{};
   final followedUserIds = <String>{};
@@ -142,6 +143,31 @@ class DemoStore {
             'likeCount': _rng.nextInt(50),
             'createdAt': _ago(hours: 1 + c).toIso8601String(),
           });
+    }
+
+    // A few posts owned by the demo user so Studio/profile have content.
+    for (var i = 0; i < 4; i++) {
+      final id = 'p_demo_me_$i';
+      posts.insert(i * 3, {
+        'id': id,
+        'author': me,
+        'body': [
+          'Testing out KLIQ Studio — loving the tools so far! #kliq',
+          'New content dropping this week 👀 #creator',
+          'Behind the scenes from today\'s shoot 📸 #windhoek',
+          'Threads: what content do you want to see next? 💬',
+        ][i],
+        'mediaUrls': i == 3 ? <String>[] : [img(950 + i, w: 900, h: 900)],
+        'mediaType': i == 3 ? 'text' : 'image',
+        'likeCount': 120 + _rng.nextInt(900),
+        'commentCount': 8 + _rng.nextInt(60),
+        'shareCount': _rng.nextInt(40),
+        'isLiked': false,
+        'isSaved': false,
+        'location': null,
+        'createdAt': _ago(days: i, hours: 5).toIso8601String(),
+      });
+      comments[id] = [];
     }
 
     // ── Stories ────────────────────────────────────────────────────────────
