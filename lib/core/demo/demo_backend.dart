@@ -141,6 +141,11 @@ class DemoBackend {
     }
 
     if (p == '/amplify/campaigns') return s.amplifyCampaigns;
+    if (p == '/wallet/orders') return s.orders;
+    if (p == '/blocks' || p == '/blocks/muted') return [];
+    if (seg.length >= 3 && seg[0] == 'communities' && seg[2] == 'messages') {
+      return s.communityMessages[seg[1]] ?? [];
+    }
     if (p == '/analytics/overview') {
       final days = switch (query['range']) {
         '30D' => 30,
@@ -455,6 +460,57 @@ class DemoBackend {
       };
       s.products.insert(0, product);
       return product;
+    }
+    if (seg.length >= 3 && seg[0] == 'marketplace' && seg[2] == 'buy') {
+      final prod = s.products.where((x) => x['id'] == seg[1]).firstOrNull;
+      if (prod != null) {
+        prod['salesCount'] = (prod['salesCount'] as int? ?? 0) + 1;
+        s.orders.insert(0, {
+          'id': s.nextId('ord'),
+          'productName': prod['name'],
+          'price': prod['price'],
+          'status': 'processing',
+          'createdAt': DateTime.now().toIso8601String(),
+        });
+      }
+      return {'ok': true};
+    }
+    if (p == '/wallet/purchase') {
+      s.wallet['tokens'] =
+          (s.wallet['tokens'] as int) + ((body['tokens'] as num?)?.toInt() ?? 0);
+      s.walletTransactions.insert(0, {
+        'id': s.nextId('tx'),
+        'type': 'purchase',
+        'description': 'Bought ${body['tokens']} tokens',
+        'amount': -((body['amount'] as num?)?.toInt() ?? 0),
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+      return {'ok': true, 'tokens': s.wallet['tokens']};
+    }
+    if (p == '/communities' && method == 'POST') {
+      final community = {
+        'id': s.nextId('com'),
+        'name': body['name'] ?? 'New community',
+        'description': body['description'] ?? '',
+        'memberCount': 1,
+        'avatarUrl': DemoStore.img(9900, w: 400, h: 400),
+        'bannerUrl': DemoStore.img(9901, w: 1600, h: 600),
+        'isJoined': true,
+        'isPrivate': body['privacy'] != 'public',
+        'channels': ['General', 'Announcements', 'Media', 'Events', 'Off-topic'],
+      };
+      s.communities.insert(0, community);
+      return community;
+    }
+    if (seg.length >= 3 && seg[0] == 'communities' && seg[2] == 'messages') {
+      final msg = {
+        'id': s.nextId('cm'),
+        'author': s.me,
+        'body': body['body'] ?? '',
+        'createdAt': DateTime.now().toIso8601String(),
+      };
+      s.communityMessages.putIfAbsent(seg[1], () => []).add(msg);
+      return msg;
     }
     if (p == '/kliqstream/submissions') {
       return {'ok': true, 'status': 'under_review'};

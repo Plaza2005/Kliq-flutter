@@ -27,6 +27,8 @@ class DemoStore {
   final notifications = <Map<String, dynamic>>[];
   final walletTransactions = <Map<String, dynamic>>[];
   final amplifyCampaigns = <Map<String, dynamic>>[];
+  final orders = <Map<String, dynamic>>[];
+  final communityMessages = <String, List<Map<String, dynamic>>>{};
   final likedPostIds = <String>{};
   final savedPostIds = <String>{};
   final followedUserIds = <String>{};
@@ -332,6 +334,24 @@ class DemoStore {
         'isPrivate': i == 4,
         'channels': ['General', 'Announcements', 'Media', 'Events', 'Off-topic'],
       });
+    }
+
+    for (var i = 0; i < comms.length; i++) {
+      communityMessages['com_demo_$i'] = [
+        for (var m = 0; m < 5; m++)
+          {
+            'id': 'cm_demo_${i}_$m',
+            'author': users[(i + m) % users.length],
+            'body': [
+              'Welcome to ${comms[i][0]}! 👋',
+              'Anyone going to the event this weekend?',
+              'Just shared something in Media — check it out',
+              'This community is growing fast 🚀',
+              'What is everyone working on today?'
+            ][m],
+            'createdAt': _ago(hours: 10 - m).toIso8601String(),
+          }
+      ];
     }
 
     // ── Messaging ──────────────────────────────────────────────────────────
