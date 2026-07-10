@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/discover/search_page.dart';
 import '../../features/discover/sounds_page.dart';
 import '../../features/kliqstream/kliqstream_pages.dart';
+import '../../features/kliqstream/stremio_pages.dart';
 import '../../features/kliqtube/kliqtube_pages.dart';
 import '../../features/reels/reels_page.dart';
 
@@ -28,6 +29,29 @@ final discoverRoutes = <RouteBase>[
   GoRoute(
     path: '/kliqstream/mylist',
     builder: (c, s) => const KliqStreamMyListPage(),
+  ),
+  GoRoute(
+    path: '/kliqstream/search',
+    builder: (c, s) => const KliqStreamSearchPage(),
+  ),
+  GoRoute(
+    path: '/kliqstream/addons',
+    builder: (c, s) => const StremioAddonsPage(),
+  ),
+  GoRoute(
+    path: '/kliqstream/title/:type/:id',
+    builder: (c, s) => StremioTitlePage(
+      type: s.pathParameters['type']!,
+      id: s.pathParameters['id']!,
+    ),
+  ),
+  GoRoute(
+    path: '/kliqstream/play/:type/:id',
+    builder: (c, s) => StremioPlayerPage(
+      type: s.pathParameters['type']!,
+      id: s.pathParameters['id']!,
+      title: s.uri.queryParameters['name'],
+    ),
   ),
   GoRoute(
     path: '/kliqstream/show/:id',

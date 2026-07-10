@@ -42,6 +42,47 @@ class CreatePage extends StatelessWidget {
               onTap: () => context.push('/studio'),
             ),
           ),
+          const SizedBox(height: 12),
+          // Direct Go Live action — straight to the broadcaster.
+          Material(
+            color: KliqColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => context.push('/go-live'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: KliqColors.live.withValues(alpha: 0.5)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.sensors, color: KliqColors.live, size: 28),
+                    SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Go Live',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15)),
+                          Text('Start streaming to your audience now',
+                              style: TextStyle(
+                                  color: KliqColors.textSecondary,
+                                  fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: KliqColors.textMuted),
+                  ],
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
           const Text('Quick create',
               style: TextStyle(fontWeight: FontWeight.w700)),

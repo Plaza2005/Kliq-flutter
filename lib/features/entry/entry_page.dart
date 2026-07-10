@@ -56,7 +56,9 @@ class _EntryPageState extends State<EntryPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Spacer(),
-                    const Center(child: KliqWordmark(size: 64)),
+                    const Center(child: KliqLogo(size: 96)),
+                    const SizedBox(height: 20),
+                    const Center(child: KliqWordmark(size: 44)),
                     const SizedBox(height: 12),
                     const Text(
                       'Create. Connect. Get paid.',

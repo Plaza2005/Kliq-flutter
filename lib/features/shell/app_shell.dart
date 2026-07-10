@@ -42,7 +42,13 @@ class AppShell extends StatelessWidget {
               labelType: NavigationRailLabelType.all,
               leading: const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
-                child: KliqWordmark(size: 22),
+                child: Column(
+                  children: [
+                    KliqLogo(size: 42),
+                    SizedBox(height: 8),
+                    KliqWordmark(size: 13),
+                  ],
+                ),
               ),
               destinations: [
                 for (final d in _destinations)

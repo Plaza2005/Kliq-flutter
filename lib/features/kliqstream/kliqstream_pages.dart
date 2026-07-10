@@ -5,9 +5,12 @@ import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../common/kliq_video.dart';
 import '../discover/discover_common.dart';
+import 'stremio_pages.dart';
+import 'stremio_service.dart';
 
-/// KliqStream — Netflix-style originals catalogue: featured banner,
-/// category rows, show page with episodes, full-screen player, My List.
+/// KliqStream — Netflix-style catalogue: featured banner, KLIQ originals
+/// rows, plus movie/series catalogues + search served over the Stremio
+/// add-on protocol (Cinemeta by default, user add-ons for streams).
 
 class KliqStreamPage extends StatefulWidget {
   const KliqStreamPage({super.key});
@@ -24,6 +27,7 @@ class _KliqStreamPageState extends State<KliqStreamPage> {
   @override
   void initState() {
     super.initState();
+    StremioClient.instance.load();
     _load();
   }
 
@@ -55,8 +59,16 @@ class _KliqStreamPageState extends State<KliqStreamPage> {
             style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: 'Search movies & series',
+              onPressed: () => context.push('/kliqstream/search')),
+          IconButton(
               icon: const Icon(Icons.bookmark_outline),
               onPressed: () => context.push('/kliqstream/mylist')),
+          IconButton(
+              icon: const Icon(Icons.extension_outlined),
+              tooltip: 'Streaming add-ons',
+              onPressed: () => context.push('/kliqstream/addons')),
         ],
       ),
       body: _loading
@@ -79,6 +91,23 @@ class _KliqStreamPageState extends State<KliqStreamPage> {
                       _CategoryRow(
                           title: entry.key,
                           shows: asMapList(entry.value)),
+                    // ── Movies & series via Stremio add-ons ────────────
+                    const StremioRow(
+                        title: 'Popular Movies',
+                        type: 'movie',
+                        catalogId: 'top'),
+                    const StremioRow(
+                        title: 'Popular Series',
+                        type: 'series',
+                        catalogId: 'top'),
+                    const StremioRow(
+                        title: 'New Movies',
+                        type: 'movie',
+                        catalogId: 'year'),
+                    const StremioRow(
+                        title: 'Top Rated Series',
+                        type: 'series',
+                        catalogId: 'imdbRating'),
                     const SizedBox(height: 24),
                   ],
                 ),

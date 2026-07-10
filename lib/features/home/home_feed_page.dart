@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../core/api_client.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
+import '../shell/action_panel.dart';
 import 'feed_models.dart';
 import 'widgets/post_card.dart';
 import 'widgets/story_bar.dart';
@@ -143,7 +144,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     final session = context.watch<Session>();
     return Scaffold(
       appBar: AppBar(
-        title: const KliqWordmark(size: 22),
+        title: const KliqWordmark(size: 20, withLogo: true),
         actions: [
           IconButton(
             icon: const Icon(Icons.favorite_border),
@@ -153,6 +154,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
             icon: const Icon(Icons.send_outlined),
             onPressed: () => context.push('/inbox'),
           ),
+          const ActionPanelButton(),
         ],
       ),
       body: _buildBody(session),

@@ -99,14 +99,46 @@ ThemeData buildKliqTheme() {
   );
 }
 
-/// The KLIQ wordmark used on splash/entry and app bars.
-class KliqWordmark extends StatelessWidget {
-  const KliqWordmark({super.key, this.size = 40});
+/// The original KLIQ logo image (assets/images/kliq_logo.jpeg) in a
+/// rounded container, as used in the prot_3 header/sidebar.
+class KliqLogo extends StatelessWidget {
+  const KliqLogo({super.key, this.size = 36});
   final double size;
 
   @override
   Widget build(BuildContext context) {
-    return ShaderMask(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.28),
+      child: Image.asset(
+        'assets/images/kliq_logo.jpeg',
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (c, e, s) => Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            gradient: KliqColors.gradient,
+            borderRadius: BorderRadius.circular(size * 0.28),
+          ),
+          child: const Icon(Icons.bolt, color: Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
+/// The KLIQ wordmark used on splash/entry and app bars. When [withLogo] is
+/// true the original logo image sits beside the gradient wordmark, matching
+/// the prot_3 header.
+class KliqWordmark extends StatelessWidget {
+  const KliqWordmark({super.key, this.size = 40, this.withLogo = false});
+  final double size;
+  final bool withLogo;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = ShaderMask(
       shaderCallback: (bounds) => KliqColors.gradient.createShader(bounds),
       child: Text(
         'KLIQ',
@@ -117,6 +149,15 @@ class KliqWordmark extends StatelessWidget {
           color: Colors.white,
         ),
       ),
+    );
+    if (!withLogo) return text;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        KliqLogo(size: size * 1.4),
+        SizedBox(width: size * 0.45),
+        text,
+      ],
     );
   }
 }

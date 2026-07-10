@@ -5,6 +5,7 @@ import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../common/kliq_video.dart';
 import '../discover/discover_common.dart';
+import '../shell/action_panel.dart';
 
 /// KliqTube — YouTube-style long-form video: browse, watch, channel,
 /// playlists.
@@ -60,6 +61,7 @@ class _KliqTubePageState extends State<KliqTubePage> {
           IconButton(
               icon: const Icon(Icons.video_call_outlined),
               onPressed: () => context.push('/studio/kliqtube')),
+          const ActionPanelButton(),
         ],
       ),
       body: _loading
