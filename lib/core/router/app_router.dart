@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/common/placeholder_page.dart';
+import '../../features/discover/explore_page.dart';
 import '../../features/entry/entry_page.dart';
+import '../../features/home/home_feed_page.dart';
+import '../../features/profile/profile_page.dart';
 import '../../features/shell/app_shell.dart';
 import '../app_mode.dart';
 import '../session.dart';
@@ -52,15 +55,13 @@ GoRouter buildRouter(AppModeController mode, Session session) {
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/home',
-              builder: (c, s) => const PlaceholderPage(
-                  title: 'Home',
-                  subtitle: 'Feed with stories — under construction'),
+              builder: (c, s) => const HomeFeedPage(),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/explore',
-              builder: (c, s) => const PlaceholderPage(title: 'Explore'),
+              builder: (c, s) => const ExplorePage(),
             ),
           ]),
           StatefulShellBranch(routes: [
@@ -78,7 +79,7 @@ GoRouter buildRouter(AppModeController mode, Session session) {
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/profile',
-              builder: (c, s) => const PlaceholderPage(title: 'Profile'),
+              builder: (c, s) => const ProfilePage(),
             ),
           ]),
         ],

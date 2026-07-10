@@ -53,7 +53,17 @@ class DemoBackend {
               })
           .toList();
     }
-    if (p == '/stories') return s.stories;
+    if (p == '/stories' || p == '/stories/feed') return s.stories;
+    if (p == '/search/trending') {
+      return [
+        {'tag': 'namibia', 'postCount': 1240},
+        {'tag': 'windhoek', 'postCount': 860},
+        {'tag': 'kliq', 'postCount': 745},
+        {'tag': 'music', 'postCount': 512},
+        {'tag': 'food', 'postCount': 431},
+        {'tag': 'wildlife', 'postCount': 322},
+      ];
+    }
     if (p == '/posts/reels' || p == '/reels') return s.reels;
     if (p == '/posts/explore' || p == '/explore') {
       return [...s.posts]..shuffle(_rng);
@@ -99,8 +109,33 @@ class DemoBackend {
       };
     }
 
+    if (p == '/users/suggestions') {
+      return s.users.where((u) => !s.followedUserIds.contains(u['id'])).toList();
+    }
+    if (p == '/bookmarks') {
+      return s.posts
+          .where((post) => s.savedPostIds.contains(post['id']))
+          .map((post) => {...post, 'isSaved': true})
+          .toList();
+    }
+
     // Parameterised routes.
     if (seg.length >= 2) {
+      if (seg[0] == 'hashtags' && seg.length >= 2) {
+        final tag = seg[1].toLowerCase();
+        return s.posts
+            .where((post) =>
+                post['body'].toString().toLowerCase().contains('#$tag'))
+            .toList();
+      }
+      if (seg[0] == 'users' && seg.length >= 3 &&
+          (seg[2] == 'followers' || seg[2] == 'following')) {
+        return seg[2] == 'followers'
+            ? s.users.take(6).toList()
+            : s.users
+                .where((u) => s.followedUserIds.contains(u['id']))
+                .toList();
+      }
       switch (seg[0]) {
         case 'users':
           final u = s.findUser(seg[1]);
@@ -149,6 +184,33 @@ class DemoBackend {
 
     if (p == '/auth/login' || p == '/auth/register') {
       return {'token': 'demo-token', 'user': s.me};
+    }
+    if (p == '/auth/me' && (method == 'PATCH' || method == 'PUT')) {
+      s.me.addAll(body);
+      return s.me;
+    }
+    if (p == '/stories' && method == 'POST') {
+      final story = {
+        'id': s.nextId('s'),
+        'author': s.me,
+        'items': [
+          {
+            'id': s.nextId('si'),
+            'mediaUrl': body['mediaUrl'] ?? DemoStore.img(9500),
+            'mediaType': body['mediaType'] ?? 'image',
+            'createdAt': DateTime.now().toIso8601String(),
+          }
+        ],
+        'seen': false,
+      };
+      s.stories.insert(0, story);
+      return story;
+    }
+    if (p == '/notifications/read-all') {
+      for (final n in s.notifications) {
+        n['read'] = true;
+      }
+      return {'ok': true};
     }
     if (p == '/posts' && method == 'POST') {
       final post = {

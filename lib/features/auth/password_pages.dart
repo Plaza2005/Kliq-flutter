@@ -1,0 +1,192 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../core/api_client.dart';
+import '../../core/theme.dart';
+import 'auth_scaffold.dart';
+
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
+
+  @override
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+}
+
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
+  final _email = TextEditingController();
+  bool _busy = false;
+  bool _sent = false;
+  String? _error;
+
+  Future<void> _submit() async {
+    if (_email.text.trim().isEmpty) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await Api.instance.post('/auth/forgot-password',
+          body: {'email': _email.text.trim()});
+      setState(() {
+        _sent = true;
+        _busy = false;
+      });
+    } catch (e) {
+      setState(() {
+        _busy = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthScaffold(
+      title: 'Reset your password',
+      children: _sent
+          ? [
+              const Icon(Icons.mark_email_read_outlined,
+                  size: 48, color: KliqColors.success),
+              const SizedBox(height: 16),
+              const Text(
+                'If an account exists for that email, a reset link is on '
+                'its way. Check your inbox.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: KliqColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+              AuthButton(
+                  label: 'Back to Sign In',
+                  onPressed: () => context.go('/login')),
+            ]
+          : [
+              const Text(
+                'Enter the email linked to your account and we will send '
+                'you a reset link.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: KliqColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+              AuthField(
+                controller: _email,
+                hint: 'Email',
+                keyboardType: TextInputType.emailAddress,
+              ),
+              AuthError(_error),
+              AuthButton(
+                  label: 'Send Reset Link', busy: _busy, onPressed: _submit),
+              TextButton(
+                onPressed: () => context.go('/login'),
+                child: const Text('Back to Sign In',
+                    style: TextStyle(color: KliqColors.textMuted)),
+              ),
+            ],
+    );
+  }
+}
+
+class ResetPasswordPage extends StatefulWidget {
+  const ResetPasswordPage({super.key, this.token});
+  final String? token;
+
+  @override
+  State<ResetPasswordPage> createState() => _ResetPasswordPageState();
+}
+
+class _ResetPasswordPageState extends State<ResetPasswordPage> {
+  final _token = TextEditingController();
+  final _password = TextEditingController();
+  final _confirm = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.token != null) _token.text = widget.token!;
+  }
+
+  Future<void> _submit() async {
+    if (_password.text.length < 8) {
+      setState(() => _error = 'Password must be at least 8 characters');
+      return;
+    }
+    if (_password.text != _confirm.text) {
+      setState(() => _error = 'Passwords do not match');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await Api.instance.post('/auth/reset-password',
+          body: {'token': _token.text.trim(), 'password': _password.text});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Password updated — sign in with your new password')));
+      context.go('/login');
+    } catch (e) {
+      setState(() {
+        _busy = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthScaffold(
+      title: 'Choose a new password',
+      children: [
+        if (widget.token == null)
+          AuthField(controller: _token, hint: 'Reset code from your email'),
+        AuthField(controller: _password, hint: 'New password', obscure: true),
+        AuthField(
+            controller: _confirm, hint: 'Confirm new password', obscure: true),
+        AuthError(_error),
+        AuthButton(label: 'Update Password', busy: _busy, onPressed: _submit),
+      ],
+    );
+  }
+}
+
+class VerifyEmailPage extends StatelessWidget {
+  const VerifyEmailPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthScaffold(
+      title: 'Verify your email',
+      children: [
+        const Icon(Icons.mark_email_unread_outlined,
+            size: 48, color: KliqColors.cyan),
+        const SizedBox(height: 16),
+        const Text(
+          'We sent a verification link to your email address. '
+          'Open it to activate your account, then sign in.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: KliqColors.textSecondary),
+        ),
+        const SizedBox(height: 20),
+        AuthButton(
+            label: 'Go to Sign In', onPressed: () => context.go('/login')),
+        TextButton(
+          onPressed: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            try {
+              await Api.instance.post('/auth/resend-verification');
+              messenger.showSnackBar(const SnackBar(
+                  content: Text('Verification email re-sent')));
+            } catch (e) {
+              messenger.showSnackBar(
+                  SnackBar(content: Text('Could not resend: $e')));
+            }
+          },
+          child: const Text('Resend email',
+              style: TextStyle(color: KliqColors.textMuted)),
+        ),
+      ],
+    );
+  }
+}

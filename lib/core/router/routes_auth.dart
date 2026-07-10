@@ -1,32 +1,22 @@
 import 'package:go_router/go_router.dart';
 
-import '../../features/common/placeholder_page.dart';
+import '../../features/auth/login_page.dart';
+import '../../features/auth/onboarding_page.dart';
+import '../../features/auth/password_pages.dart';
+import '../../features/auth/register_page.dart';
 
-/// Auth & onboarding routes. Owned by the auth/feed/profile feature team —
-/// replace the placeholder builders with real pages.
+/// Auth & onboarding routes.
 final authRoutes = <RouteBase>[
+  GoRoute(path: '/login', builder: (c, s) => const LoginPage()),
+  GoRoute(path: '/register', builder: (c, s) => const RegisterPage()),
   GoRoute(
-    path: '/login',
-    builder: (c, s) => const PlaceholderPage(title: 'Sign In'),
-  ),
-  GoRoute(
-    path: '/register',
-    builder: (c, s) => const PlaceholderPage(title: 'Create Account'),
-  ),
-  GoRoute(
-    path: '/forgot-password',
-    builder: (c, s) => const PlaceholderPage(title: 'Forgot Password'),
-  ),
+      path: '/forgot-password',
+      builder: (c, s) => const ForgotPasswordPage()),
   GoRoute(
     path: '/reset-password',
-    builder: (c, s) => const PlaceholderPage(title: 'Reset Password'),
+    builder: (c, s) =>
+        ResetPasswordPage(token: s.uri.queryParameters['token']),
   ),
-  GoRoute(
-    path: '/verify-email',
-    builder: (c, s) => const PlaceholderPage(title: 'Verify Email'),
-  ),
-  GoRoute(
-    path: '/onboarding',
-    builder: (c, s) => const PlaceholderPage(title: 'Onboarding'),
-  ),
+  GoRoute(path: '/verify-email', builder: (c, s) => const VerifyEmailPage()),
+  GoRoute(path: '/onboarding', builder: (c, s) => const OnboardingPage()),
 ];
