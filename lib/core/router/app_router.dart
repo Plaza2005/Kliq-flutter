@@ -5,6 +5,7 @@ import '../../features/common/placeholder_page.dart';
 import '../../features/discover/explore_page.dart';
 import '../../features/entry/entry_page.dart';
 import '../../features/home/home_feed_page.dart';
+import '../../features/kliqtube/kliqtube_pages.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/shell/app_shell.dart';
 import '../app_mode.dart';
@@ -73,7 +74,7 @@ GoRouter buildRouter(AppModeController mode, Session session) {
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/kliqtube',
-              builder: (c, s) => const PlaceholderPage(title: 'KliqTube'),
+              builder: (c, s) => const KliqTubePage(),
             ),
           ]),
           StatefulShellBranch(routes: [

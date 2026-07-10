@@ -85,6 +85,37 @@ class DemoBackend {
     if (p == '/kliqstream/mylist') {
       return s.streamShows.where((x) => x['inMyList'] == true).toList();
     }
+    if (p == '/kliqtube/playlists') {
+      return [
+        {
+          'id': 'pl_demo_0',
+          'title': 'Watch Later',
+          'thumbnailUrl': DemoStore.img(310, w: 640, h: 360),
+          'videoCount': 4,
+        },
+        {
+          'id': 'pl_demo_1',
+          'title': 'Music Production',
+          'thumbnailUrl': DemoStore.img(311, w: 640, h: 360),
+          'videoCount': 7,
+        },
+      ];
+    }
+    if (p == '/sounds') {
+      return [
+        for (var i = 0; i < 8; i++)
+          {
+            'id': 'snd_demo_$i',
+            'name': [
+              'Kalahari Nights', 'Windhoek Groove', 'Desert Rose',
+              'Coastal Vibes', 'Township Funk', 'Savanna Beat',
+              'Etosha Dawn', 'Kwaito Flow'
+            ][i],
+            'artist': s.users[i % s.users.length]['displayName'],
+            'useCount': 120 + i * 340,
+          }
+      ];
+    }
     if (p == '/marketplace/products' || p == '/marketplace') return s.products;
     if (p == '/wallet') return {...s.wallet, 'transactions': s.walletTransactions};
     if (p == '/wallet/history') return s.walletTransactions;
@@ -322,6 +353,17 @@ class DemoBackend {
       };
       s.messages.putIfAbsent(convId.toString(), () => []).add(msg);
       return msg;
+    }
+
+    if (seg.length >= 3 && seg[0] == 'kliqstream' && seg[2] == 'mylist') {
+      final show = s.streamShows.where((x) => x['id'] == seg[1]).firstOrNull;
+      if (show != null) show['inMyList'] = !(show['inMyList'] as bool? ?? false);
+      return {'inMyList': show?['inMyList'] ?? true};
+    }
+    if (seg.length >= 3 && seg[0] == 'kliqtube' && seg[2] == 'view') {
+      final v = s.tubeVideos.where((x) => x['id'] == seg[1]).firstOrNull;
+      if (v != null) v['viewCount'] = (v['viewCount'] as int) + 1;
+      return {'ok': true};
     }
 
     if (seg.length >= 3 && seg[0] == 'communities' && seg[2] == 'join') {
