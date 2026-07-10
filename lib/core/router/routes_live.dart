@@ -1,20 +1,15 @@
 import 'package:go_router/go_router.dart';
 
-import '../../features/common/placeholder_page.dart';
+import '../../features/live/go_live_page.dart';
+import '../../features/live/live_list_page.dart';
+import '../../features/live/live_viewer_page.dart';
 
-/// Live streaming surfaces. Owned by the live streaming feature team.
+/// Live streaming surfaces.
 final liveRoutes = <RouteBase>[
-  GoRoute(
-    path: '/live',
-    builder: (c, s) => const PlaceholderPage(title: 'Live Now'),
-  ),
-  GoRoute(
-    path: '/go-live',
-    builder: (c, s) => const PlaceholderPage(title: 'Go Live'),
-  ),
+  GoRoute(path: '/live', builder: (c, s) => const LiveListPage()),
+  GoRoute(path: '/go-live', builder: (c, s) => const GoLivePage()),
   GoRoute(
     path: '/live/:id',
-    builder: (c, s) => PlaceholderPage(
-        title: 'Live Stream', subtitle: s.pathParameters['id']),
+    builder: (c, s) => LiveViewerPage(streamId: s.pathParameters['id']!),
   ),
 ];
