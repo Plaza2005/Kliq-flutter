@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../discover/discover_common.dart';
+import '../shell/action_panel.dart';
 import 'live_widgets.dart';
 
 /// Grid of everyone currently live, with a Go Live shortcut.
@@ -56,6 +57,7 @@ class _LiveListPageState extends State<LiveListPage> {
                 style: TextStyle(
                     color: KliqColors.live, fontWeight: FontWeight.w700)),
           ),
+          const ActionPanelButton(),
         ],
       ),
       body: _loading

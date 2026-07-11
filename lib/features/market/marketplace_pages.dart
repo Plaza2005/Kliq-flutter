@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../discover/discover_common.dart';
+import '../shell/action_panel.dart';
 
 /// Marketplace: browse, product detail (buy), seller storefront, shop
 /// customisation.
@@ -64,6 +65,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
               icon: const Icon(Icons.add_business_outlined),
               tooltip: 'Sell',
               onPressed: () => context.push('/studio/marketplace')),
+          const ActionPanelButton(),
         ],
       ),
       body: _loading

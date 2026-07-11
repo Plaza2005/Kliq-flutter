@@ -5,6 +5,7 @@ import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../common/kliq_video.dart';
 import '../discover/discover_common.dart';
+import '../shell/action_panel.dart';
 
 /// KliqStream — Netflix-style originals catalogue: featured banner,
 /// category rows, search, show page with episodes, full-screen player,
@@ -62,6 +63,7 @@ class _KliqStreamPageState extends State<KliqStreamPage> {
           IconButton(
               icon: const Icon(Icons.bookmark_outline),
               onPressed: () => context.push('/kliqstream/mylist')),
+          const ActionPanelButton(),
         ],
       ),
       body: _loading

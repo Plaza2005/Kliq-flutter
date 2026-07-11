@@ -7,6 +7,7 @@ import '../../core/session.dart';
 import '../../core/theme.dart';
 import '../discover/discover_common.dart';
 import '../home/feed_models.dart';
+import '../shell/action_panel.dart';
 
 /// Profile surface used for both the signed-in user (the Profile tab,
 /// [username] == null) and other creators (/user/:username).
@@ -119,7 +120,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 onPressed: () => context.go('/create')),
             IconButton(
                 icon: const Icon(Icons.menu),
-                onPressed: () => context.push('/settings')),
+                tooltip: 'Menu',
+                onPressed: () => showActionPanel(context)),
           ],
         ],
       ),

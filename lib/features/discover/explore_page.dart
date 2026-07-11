@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
+import '../shell/action_panel.dart';
 import 'discover_common.dart';
 
 /// Explore tab — trending hashtags, section chips and a masonry grid of
@@ -105,27 +106,36 @@ class _ExplorePageState extends State<ExplorePage> {
 
   Widget _searchBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: GestureDetector(
-        onTap: () => context.push('/search'),
-        child: Container(
-          height: 42,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: KliqColors.surfaceElevated,
-            borderRadius: BorderRadius.circular(21),
-            border: Border.all(color: KliqColors.border),
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => context.push('/search'),
+              child: Container(
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: KliqColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(21),
+                  border: Border.all(color: KliqColors.border),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.search,
+                        size: 18, color: KliqColors.textMuted),
+                    SizedBox(width: 8),
+                    Text('Search KLIQ...',
+                        style: TextStyle(
+                            color: KliqColors.textMuted, fontSize: 14)),
+                  ],
+                ),
+              ),
+            ),
           ),
-          child: const Row(
-            children: [
-              Icon(Icons.search, size: 18, color: KliqColors.textMuted),
-              SizedBox(width: 8),
-              Text('Search KLIQ...',
-                  style:
-                      TextStyle(color: KliqColors.textMuted, fontSize: 14)),
-            ],
-          ),
-        ),
+          const SizedBox(width: 4),
+          const ActionPanelButton(),
+        ],
       ),
     );
   }

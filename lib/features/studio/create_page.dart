@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
+import '../shell/action_panel.dart';
 import 'studio_common.dart';
 
 /// The Create tab (center of the bottom bar): quick access to every
@@ -15,6 +16,7 @@ class CreatePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Create',
             style: TextStyle(fontWeight: FontWeight.w800)),
+        actions: const [ActionPanelButton()],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
