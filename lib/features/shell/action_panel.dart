@@ -65,7 +65,7 @@ class _ActionPanel extends StatelessWidget {
     (icon: Icons.download_outlined, label: 'Offline Videos', path: '/studio', color: KliqColors.purple),
     (icon: Icons.tv_outlined, label: 'Kliq Stream', path: '/kliqstream', color: KliqColors.pink),
     (icon: Icons.play_circle_outline, label: 'KliqTube', path: '/kliqtube', color: Color(0xFFF87171)),
-    (icon: Icons.work_outline, label: 'Kliq Business', path: '/marketplace', color: KliqColors.warning),
+    (icon: Icons.storefront_outlined, label: 'Marketplace', path: '/marketplace', color: KliqColors.warning),
     (icon: Icons.videocam_outlined, label: 'Kliq Studio', path: '/studio', color: KliqColors.cyan),
     (icon: Icons.trending_up, label: 'Amplify', path: '/amplify', color: Color(0xFFFB923C)),
     (icon: Icons.groups_outlined, label: 'Community', path: '/communities', color: KliqColors.purple),

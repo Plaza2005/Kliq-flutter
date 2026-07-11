@@ -24,12 +24,20 @@ class KliqTubeStudioPage extends StatefulWidget {
 class _KliqTubeStudioPageState extends State<KliqTubeStudioPage> {
   final _title = TextEditingController();
   final _description = TextEditingController();
+  final _tags = TextEditingController();
   String? _videoUrl;
   String? _thumbUrl;
   bool _videoBusy = false;
   bool _thumbBusy = false;
   bool _publishing = false;
+  String _category = 'Entertainment';
+  String _visibility = 'public';
   List<Map<String, dynamic>> _myVideos = [];
+
+  static const _categories = [
+    'Entertainment', 'Music', 'Education', 'Gaming', 'Sports',
+    'Food', 'Travel', 'Tech', 'Documentary', 'Comedy',
+  ];
 
   @override
   void initState() {
@@ -65,11 +73,21 @@ class _KliqTubeStudioPageState extends State<KliqTubeStudioPage> {
         'description': _description.text.trim(),
         'videoUrl': _videoUrl,
         'thumbnailUrl': _thumbUrl,
+        'category': _category,
+        'visibility': _visibility,
+        'tags': _tags.text
+            .split(',')
+            .map((t) => t.trim().replaceFirst('#', ''))
+            .where((t) => t.isNotEmpty)
+            .toList(),
       });
-      messenger.showSnackBar(
-          const SnackBar(content: Text('Video published to KliqTube 📺')));
+      messenger.showSnackBar(SnackBar(
+          content: Text(_visibility == 'public'
+              ? 'Video published to KliqTube 📺'
+              : 'Video uploaded as $_visibility 📺')));
       _title.clear();
       _description.clear();
+      _tags.clear();
       setState(() {
         _videoUrl = null;
         _thumbUrl = null;
@@ -133,6 +151,71 @@ class _KliqTubeStudioPageState extends State<KliqTubeStudioPage> {
             decoration: const InputDecoration(
                 hintText: 'Description, chapters, links…'),
           ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _tags,
+            decoration: const InputDecoration(
+              hintText: 'Tags, comma separated (music, tutorial, namibia)',
+              prefixIcon:
+                  Icon(Icons.tag, size: 18, color: KliqColors.textMuted),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text('Category',
+              style: TextStyle(
+                  fontSize: 12.5, color: KliqColors.textSecondary)),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final c in _categories)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label:
+                          Text(c, style: const TextStyle(fontSize: 12)),
+                      selected: _category == c,
+                      selectedColor:
+                          KliqColors.cyan.withValues(alpha: 0.3),
+                      onSelected: (_) => setState(() => _category = c),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text('Visibility',
+              style: TextStyle(
+                  fontSize: 12.5, color: KliqColors.textSecondary)),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              for (final v in const [
+                ('public', Icons.public, 'Public'),
+                ('unlisted', Icons.link, 'Unlisted'),
+                ('private', Icons.lock_outline, 'Private'),
+              ])
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    avatar: Icon(v.$2,
+                        size: 14,
+                        color: _visibility == v.$1
+                            ? KliqColors.cyan
+                            : KliqColors.textMuted),
+                    label:
+                        Text(v.$3, style: const TextStyle(fontSize: 12)),
+                    selected: _visibility == v.$1,
+                    selectedColor:
+                        KliqColors.cyan.withValues(alpha: 0.25),
+                    onSelected: (_) =>
+                        setState(() => _visibility = v.$1),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 14),
           PublishButton(
               label: 'Publish to KliqTube',
@@ -189,16 +272,47 @@ class _MarketplaceStudioPageState extends State<MarketplaceStudioPage> {
   final _name = TextEditingController();
   final _price = TextEditingController();
   final _description = TextEditingController();
-  String? _imageUrl;
+  final _stock = TextEditingController(text: '1');
+  final _delivery = TextEditingController();
+  final _imageUrls = <String>[];
   bool _imageBusy = false;
   bool _publishing = false;
   String _category = 'Physical';
+
+  static const _maxPhotos = 6;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _price.dispose();
+    _description.dispose();
+    _stock.dispose();
+    _delivery.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addPhoto() async {
+    if (_imageUrls.length >= _maxPhotos) return;
+    setState(() => _imageBusy = true);
+    final url = await pickAndUploadImage(context);
+    if (mounted) {
+      setState(() {
+        if (url != null) _imageUrls.add(url);
+        _imageBusy = false;
+      });
+    }
+  }
 
   Future<void> _publish() async {
     final price = double.tryParse(_price.text.trim());
     if (_name.text.trim().isEmpty || price == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('A product name and valid price are required')));
+      return;
+    }
+    if (_imageUrls.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Add at least one product photo')));
       return;
     }
     setState(() => _publishing = true);
@@ -209,15 +323,20 @@ class _MarketplaceStudioPageState extends State<MarketplaceStudioPage> {
         'description': _description.text.trim(),
         'price': price,
         'category': _category,
-        'imageUrls': _imageUrl == null ? <String>[] : [_imageUrl],
+        'imageUrls': _imageUrls,
+        'stock': int.tryParse(_stock.text.trim()) ?? 1,
+        if (_delivery.text.trim().isNotEmpty)
+          'deliveryInfo': _delivery.text.trim(),
       });
       messenger.showSnackBar(
           const SnackBar(content: Text('Product listed on Marketplace 🛍️')));
       _name.clear();
       _price.clear();
       _description.clear();
+      _delivery.clear();
+      _stock.text = '1';
       setState(() {
-        _imageUrl = null;
+        _imageUrls.clear();
         _publishing = false;
       });
     } catch (e) {
@@ -233,31 +352,57 @@ class _MarketplaceStudioPageState extends State<MarketplaceStudioPage> {
       composer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          MediaSlot(
-            label: 'Product photo',
-            icon: Icons.add_a_photo_outlined,
-            url: _imageUrl,
-            busy: _imageBusy,
-            onPick: () async {
-              setState(() => _imageBusy = true);
-              final url = await pickAndUploadImage(context);
-              if (mounted) {
-                setState(() {
-                  if (url != null) _imageUrl = url;
-                  _imageBusy = false;
-                });
-              }
-            },
+          Text(
+            'Photos (${_imageUrls.length}/$_maxPhotos) — first photo is the '
+            'cover',
+            style: const TextStyle(
+                color: KliqColors.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 84,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (var i = 0; i < _imageUrls.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: MediaThumb(
+                      url: _imageUrls[i],
+                      onRemove: () =>
+                          setState(() => _imageUrls.removeAt(i)),
+                    ),
+                  ),
+                if (_imageUrls.length < _maxPhotos)
+                  AddMediaTile(busy: _imageBusy, onTap: _addPhoto),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
               controller: _name,
               decoration: const InputDecoration(hintText: 'Product name')),
           const SizedBox(height: 10),
-          TextField(
-            controller: _price,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: 'Price (N\$)'),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _price,
+                  keyboardType: TextInputType.number,
+                  decoration:
+                      const InputDecoration(hintText: 'Price (N\$)'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _stock,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(hintText: 'Stock'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           TextField(
@@ -265,6 +410,15 @@ class _MarketplaceStudioPageState extends State<MarketplaceStudioPage> {
             maxLines: 3,
             decoration:
                 const InputDecoration(hintText: 'Describe your product…'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _delivery,
+            decoration: const InputDecoration(
+              hintText: 'Delivery / collection info (optional)',
+              prefixIcon: Icon(Icons.local_shipping_outlined,
+                  size: 18, color: KliqColors.textMuted),
+            ),
           ),
           const SizedBox(height: 10),
           Row(

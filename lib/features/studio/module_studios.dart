@@ -120,23 +120,34 @@ class PostsStudioPage extends StatefulWidget {
 
 class _PostsStudioPageState extends State<PostsStudioPage> {
   final _caption = TextEditingController();
-  String? _imageUrl;
+  final _location = TextEditingController();
+  final _imageUrls = <String>[];
   bool _uploading = false;
   bool _publishing = false;
 
-  Future<void> _pick() async {
+  static const _maxPhotos = 10;
+
+  @override
+  void dispose() {
+    _caption.dispose();
+    _location.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addPhoto() async {
+    if (_imageUrls.length >= _maxPhotos) return;
     setState(() => _uploading = true);
     final url = await pickAndUploadImage(context);
     if (mounted) {
       setState(() {
-        if (url != null) _imageUrl = url;
+        if (url != null) _imageUrls.add(url);
         _uploading = false;
       });
     }
   }
 
   Future<void> _publish() async {
-    if (_caption.text.trim().isEmpty && _imageUrl == null) {
+    if (_caption.text.trim().isEmpty && _imageUrls.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Add a photo or write something first')));
       return;
@@ -146,14 +157,19 @@ class _PostsStudioPageState extends State<PostsStudioPage> {
     try {
       await Api.instance.post('/posts', body: {
         'body': _caption.text.trim(),
-        'mediaUrls': _imageUrl == null ? <String>[] : [_imageUrl],
-        'mediaType': _imageUrl == null ? 'text' : 'image',
+        'mediaUrls': _imageUrls,
+        'mediaType': _imageUrls.isEmpty
+            ? 'text'
+            : (_imageUrls.length > 1 ? 'carousel' : 'image'),
+        if (_location.text.trim().isNotEmpty)
+          'location': _location.text.trim(),
       });
       messenger.showSnackBar(
           const SnackBar(content: Text('Post published 🎉')));
       _caption.clear();
+      _location.clear();
       setState(() {
-        _imageUrl = null;
+        _imageUrls.clear();
         _publishing = false;
       });
     } catch (e) {
@@ -172,20 +188,56 @@ class _PostsStudioPageState extends State<PostsStudioPage> {
           TextField(
             controller: _caption,
             maxLines: 4,
+            maxLength: 2200,
             decoration: const InputDecoration(
-                hintText: 'Write a caption or a text thread…'),
+                hintText:
+                    'Write a caption or a text thread… #hashtags and '
+                    '@mentions are tappable'),
           ),
-          const SizedBox(height: 12),
-          MediaSlot(
-            label: 'Add a photo',
-            icon: Icons.add_photo_alternate_outlined,
-            url: _imageUrl,
-            busy: _uploading,
-            onPick: _pick,
+          const SizedBox(height: 4),
+          // ── Photo gallery: up to 10 images become a carousel ─────────
+          Text(
+            'Photos (${_imageUrls.length}/$_maxPhotos) — more than one '
+            'becomes a swipeable carousel',
+            style: const TextStyle(
+                color: KliqColors.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 84,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (var i = 0; i < _imageUrls.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: MediaThumb(
+                      url: _imageUrls[i],
+                      onRemove: () =>
+                          setState(() => _imageUrls.removeAt(i)),
+                    ),
+                  ),
+                if (_imageUrls.length < _maxPhotos)
+                  AddMediaTile(busy: _uploading, onTap: _addPhoto),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _location,
+            decoration: const InputDecoration(
+              hintText: 'Add location (optional)',
+              prefixIcon: Icon(Icons.location_on_outlined,
+                  size: 18, color: KliqColors.textMuted),
+            ),
           ),
           const SizedBox(height: 14),
           PublishButton(
-              label: 'Publish Post', busy: _publishing, onTap: _publish),
+              label: _imageUrls.length > 1
+                  ? 'Publish Carousel (${_imageUrls.length} photos)'
+                  : 'Publish Post',
+              busy: _publishing,
+              onTap: _publish),
         ],
       ),
     );
@@ -203,17 +255,40 @@ class ReelsStudioPage extends StatefulWidget {
 
 class _ReelsStudioPageState extends State<ReelsStudioPage> {
   final _caption = TextEditingController();
+  final _soundName = TextEditingController();
   String? _videoUrl;
-  bool _uploading = false;
+  String? _coverUrl;
+  bool _videoBusy = false;
+  bool _coverBusy = false;
   bool _publishing = false;
+  bool _allowComments = true;
+  bool _allowRemix = true;
 
-  Future<void> _pick() async {
-    setState(() => _uploading = true);
+  @override
+  void dispose() {
+    _caption.dispose();
+    _soundName.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickVideo() async {
+    setState(() => _videoBusy = true);
     final url = await pickAndUploadVideo(context);
     if (mounted) {
       setState(() {
         if (url != null) _videoUrl = url;
-        _uploading = false;
+        _videoBusy = false;
+      });
+    }
+  }
+
+  Future<void> _pickCover() async {
+    setState(() => _coverBusy = true);
+    final url = await pickAndUploadImage(context);
+    if (mounted) {
+      setState(() {
+        if (url != null) _coverUrl = url;
+        _coverBusy = false;
       });
     }
   }
@@ -230,12 +305,19 @@ class _ReelsStudioPageState extends State<ReelsStudioPage> {
       await Api.instance.post('/reels', body: {
         'caption': _caption.text.trim(),
         'videoUrl': _videoUrl,
+        if (_coverUrl != null) 'thumbnailUrl': _coverUrl,
+        if (_soundName.text.trim().isNotEmpty)
+          'soundName': _soundName.text.trim(),
+        'allowComments': _allowComments,
+        'allowRemix': _allowRemix,
       });
       messenger
           .showSnackBar(const SnackBar(content: Text('Reel published 🎬')));
       _caption.clear();
+      _soundName.clear();
       setState(() {
         _videoUrl = null;
+        _coverUrl = null;
         _publishing = false;
       });
     } catch (e) {
@@ -255,17 +337,53 @@ class _ReelsStudioPageState extends State<ReelsStudioPage> {
             label: 'Pick a vertical video (15s – 3min)',
             icon: Icons.video_call_outlined,
             url: _videoUrl,
-            busy: _uploading,
-            onPick: _pick,
+            busy: _videoBusy,
+            isImage: false,
+            onPick: _pickVideo,
+          ),
+          const SizedBox(height: 10),
+          MediaSlot(
+            label: 'Cover image (optional — shown in grids)',
+            icon: Icons.image_outlined,
+            url: _coverUrl,
+            busy: _coverBusy,
+            height: 90,
+            onPick: _pickCover,
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _caption,
             maxLines: 2,
-            decoration: const InputDecoration(
-                hintText: 'Caption with #hashtags…'),
+            maxLength: 500,
+            decoration:
+                const InputDecoration(hintText: 'Caption with #hashtags…'),
           ),
-          const SizedBox(height: 14),
+          TextField(
+            controller: _soundName,
+            decoration: const InputDecoration(
+              hintText: 'Sound name (optional, defaults to Original audio)',
+              prefixIcon: Icon(Icons.music_note,
+                  size: 18, color: KliqColors.textMuted),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Allow comments',
+                style: TextStyle(fontSize: 13.5)),
+            value: _allowComments,
+            activeThumbColor: KliqColors.cyan,
+            onChanged: (v) => setState(() => _allowComments = v),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Allow remix & duet',
+                style: TextStyle(fontSize: 13.5)),
+            value: _allowRemix,
+            activeThumbColor: KliqColors.cyan,
+            onChanged: (v) => setState(() => _allowRemix = v),
+          ),
+          const SizedBox(height: 8),
           PublishButton(
               label: 'Publish Reel', busy: _publishing, onTap: _publish),
         ],
@@ -284,9 +402,16 @@ class StoriesStudioPage extends StatefulWidget {
 }
 
 class _StoriesStudioPageState extends State<StoriesStudioPage> {
+  final _overlay = TextEditingController();
   String? _imageUrl;
   bool _uploading = false;
   bool _publishing = false;
+
+  @override
+  void dispose() {
+    _overlay.dispose();
+    super.dispose();
+  }
 
   Future<void> _pick() async {
     setState(() => _uploading = true);
@@ -308,10 +433,14 @@ class _StoriesStudioPageState extends State<StoriesStudioPage> {
     setState(() => _publishing = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await Api.instance.post('/stories',
-          body: {'mediaUrl': _imageUrl, 'mediaType': 'image'});
+      await Api.instance.post('/stories', body: {
+        'mediaUrl': _imageUrl,
+        'mediaType': 'image',
+        if (_overlay.text.trim().isNotEmpty) 'body': _overlay.text.trim(),
+      });
       messenger.showSnackBar(const SnackBar(
           content: Text('Story posted — live for 24 hours ✨')));
+      _overlay.clear();
       setState(() {
         _imageUrl = null;
         _publishing = false;
@@ -329,12 +458,30 @@ class _StoriesStudioPageState extends State<StoriesStudioPage> {
       composer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Tall 9:16-ish preview so the story looks like it will on screen
           MediaSlot(
             label: 'Pick a photo for your story',
             icon: Icons.add_photo_alternate_outlined,
             url: _imageUrl,
             busy: _uploading,
+            height: 220,
             onPick: _pick,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _overlay,
+            maxLength: 120,
+            decoration: const InputDecoration(
+              hintText: 'Text overlay (optional)',
+              prefixIcon: Icon(Icons.text_fields,
+                  size: 18, color: KliqColors.textMuted),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Stories disappear after 24 hours and show with a gradient ring '
+            'in the story bar.',
+            style: TextStyle(color: KliqColors.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 14),
           PublishButton(
