@@ -5,12 +5,10 @@ import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../common/kliq_video.dart';
 import '../discover/discover_common.dart';
-import 'stremio_pages.dart';
-import 'stremio_service.dart';
 
-/// KliqStream — Netflix-style catalogue: featured banner, KLIQ originals
-/// rows, plus movie/series catalogues + search served over the Stremio
-/// add-on protocol (Cinemeta by default, user add-ons for streams).
+/// KliqStream — Netflix-style originals catalogue: featured banner,
+/// category rows, search, show page with episodes, full-screen player,
+/// My List.
 
 class KliqStreamPage extends StatefulWidget {
   const KliqStreamPage({super.key});
@@ -27,7 +25,6 @@ class _KliqStreamPageState extends State<KliqStreamPage> {
   @override
   void initState() {
     super.initState();
-    StremioClient.instance.load();
     _load();
   }
 
@@ -60,15 +57,11 @@ class _KliqStreamPageState extends State<KliqStreamPage> {
         actions: [
           IconButton(
               icon: const Icon(Icons.search),
-              tooltip: 'Search movies & series',
+              tooltip: 'Search shows',
               onPressed: () => context.push('/kliqstream/search')),
           IconButton(
               icon: const Icon(Icons.bookmark_outline),
               onPressed: () => context.push('/kliqstream/mylist')),
-          IconButton(
-              icon: const Icon(Icons.extension_outlined),
-              tooltip: 'Streaming add-ons',
-              onPressed: () => context.push('/kliqstream/addons')),
         ],
       ),
       body: _loading
@@ -91,23 +84,6 @@ class _KliqStreamPageState extends State<KliqStreamPage> {
                       _CategoryRow(
                           title: entry.key,
                           shows: asMapList(entry.value)),
-                    // ── Movies & series via Stremio add-ons ────────────
-                    const StremioRow(
-                        title: 'Popular Movies',
-                        type: 'movie',
-                        catalogId: 'top'),
-                    const StremioRow(
-                        title: 'Popular Series',
-                        type: 'series',
-                        catalogId: 'top'),
-                    const StremioRow(
-                        title: 'New Movies',
-                        type: 'movie',
-                        catalogId: 'year'),
-                    const StremioRow(
-                        title: 'Top Rated Series',
-                        type: 'series',
-                        catalogId: 'imdbRating'),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -466,6 +442,126 @@ class _KliqStreamWatchPageState extends State<KliqStreamWatchPage> {
               ? const EmptyState(
                   icon: Icons.error_outline, title: 'Episode unavailable')
               : Center(child: KliqVideo(url: _videoUrl!)),
+    );
+  }
+}
+
+/// Netflix-style search over the KliqStream catalogue (title, category,
+/// description).
+class KliqStreamSearchPage extends StatefulWidget {
+  const KliqStreamSearchPage({super.key});
+
+  @override
+  State<KliqStreamSearchPage> createState() => _KliqStreamSearchPageState();
+}
+
+class _KliqStreamSearchPageState extends State<KliqStreamSearchPage> {
+  final _controller = TextEditingController();
+  List<Map<String, dynamic>> _all = [];
+  List<Map<String, dynamic>> _results = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCatalogue();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCatalogue() async {
+    try {
+      final data = await Api.instance.get('/kliqstream');
+      final cat = asMap(data);
+      final seen = <String>{};
+      final all = <Map<String, dynamic>>[];
+      void collect(dynamic v) {
+        for (final show in asMapList(v)) {
+          final id = show['id']?.toString() ?? '';
+          if (id.isNotEmpty && seen.add(id)) all.add(show);
+        }
+      }
+
+      collect(cat['trending']);
+      collect(cat['featured']);
+      for (final v in asMap(cat['categories']).values) {
+        collect(v);
+      }
+      if (mounted) {
+        setState(() {
+          _all = all;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _search(String q) {
+    q = q.trim().toLowerCase();
+    setState(() {
+      _results = q.isEmpty
+          ? []
+          : _all.where((s) {
+              return pickStr(s, ['title']).toLowerCase().contains(q) ||
+                  pickStr(s, ['category']).toLowerCase().contains(q) ||
+                  pickStr(s, ['description']).toLowerCase().contains(q);
+            }).toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasQuery = _controller.text.trim().isNotEmpty;
+    return Scaffold(
+      appBar: AppBar(
+        title: TextField(
+          controller: _controller,
+          autofocus: true,
+          onChanged: _search,
+          decoration: const InputDecoration(
+            hintText: 'Search shows, categories…',
+            prefixIcon: Icon(Icons.search, color: KliqColors.textMuted),
+          ),
+        ),
+      ),
+      body: _loading
+          ? const CenterSpinner()
+          : !hasQuery
+              ? GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate:
+                      const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 130,
+                    childAspectRatio: 2 / 3,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                  ),
+                  itemCount: _all.length,
+                  itemBuilder: (context, i) =>
+                      ShowPoster(show: _all[i]),
+                )
+              : _results.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.search_off, title: 'No shows found')
+                  : GridView.builder(
+                      padding: const EdgeInsets.all(12),
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 130,
+                        childAspectRatio: 2 / 3,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                      ),
+                      itemCount: _results.length,
+                      itemBuilder: (context, i) =>
+                          ShowPoster(show: _results[i]),
+                    ),
     );
   }
 }
