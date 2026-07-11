@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -104,15 +103,15 @@ Future<String?> pickAndUploadImage(BuildContext context) async {
   }
 }
 
-/// Picks a video file and uploads it; returns the server URL.
+/// Picks a video from the gallery and uploads it; returns the server URL.
 Future<String?> pickAndUploadVideo(BuildContext context) async {
   try {
-    final result = await FilePicker.platform
-        .pickFiles(type: FileType.video, withData: true);
-    final file = result?.files.firstOrNull;
-    if (file == null || file.bytes == null) return null;
+    final picked =
+        await ImagePicker().pickVideo(source: ImageSource.gallery);
+    if (picked == null) return null;
+    final bytes = await picked.readAsBytes();
     final res = await Api.instance.upload(
-        '/upload', MultipartFile.fromBytes(file.bytes!, filename: file.name));
+        '/upload', MultipartFile.fromBytes(bytes, filename: picked.name));
     return res is Map ? res['url']?.toString() : null;
   } catch (e) {
     if (context.mounted) {
