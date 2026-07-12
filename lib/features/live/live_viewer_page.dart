@@ -124,11 +124,9 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
     if (body.isEmpty) return;
     final username = context.read<Session>().username;
     WsService.instance.sendLiveChat(widget.streamId, body, username);
-    if (!Api.instance.isDemo) {
-      // The server does not echo the sender's own chat back.
-      setState(() =>
-          _chat.add(LiveChatMessage(username: username, body: body)));
-    }
+    // The server does not echo the sender's own chat back.
+    setState(() =>
+        _chat.add(LiveChatMessage(username: username, body: body)));
     _chatInput.clear();
   }
 

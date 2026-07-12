@@ -2,16 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'app_mode.dart';
 import 'config.dart';
-import 'demo/demo_backend.dart';
 
 /// Single API facade for the whole app.
 ///
 /// Feature code always calls `Api.instance.get/post/...` with server route
-/// paths (e.g. `/posts/feed`). In live mode the call goes to the Node API
-/// over HTTP with the JWT attached; in demo mode it is answered by the
-/// in-memory [DemoBackend] — so every screen works with one code path.
+/// paths (e.g. `/posts/feed`). Every call goes to the Node API over HTTP with
+/// the JWT attached.
 class Api {
   Api._() {
     _dio = Dio(BaseOptions(
@@ -32,17 +29,14 @@ class Api {
   static final instance = Api._();
 
   late final Dio _dio;
-  AppModeController? _modeController;
   String? _token;
 
   static const _tokenKey = 'kliq.jwt';
 
-  bool get isDemo => _modeController?.isDemo ?? false;
-  String? get token => isDemo ? 'demo-token' : _token;
-  bool get hasSession => isDemo || _token != null;
+  String? get token => _token;
+  bool get hasSession => _token != null;
 
-  Future<void> init(AppModeController mode) async {
-    _modeController = mode;
+  Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString(_tokenKey);
   }
@@ -75,9 +69,6 @@ class Api {
   /// Multipart upload; returns `{ url: "/uploads/..." }` like the server.
   Future<dynamic> upload(String path, MultipartFile file,
       {Map<String, dynamic>? fields}) async {
-    if (isDemo) {
-      return DemoBackend.instance.handleUpload(path, file.filename ?? 'file');
-    }
     final form = FormData.fromMap({...?fields, 'file': file});
     final res = await _dio.post(path, data: form);
     return res.data;
@@ -93,10 +84,6 @@ class Api {
 
   Future<dynamic> _request(String method, String path,
       {Map<String, dynamic>? query, Object? body}) async {
-    if (isDemo) {
-      return DemoBackend.instance.handle(method, path,
-          query: query, body: body);
-    }
     try {
       final res = await _dio.request(
         path,

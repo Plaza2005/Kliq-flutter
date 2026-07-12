@@ -3,20 +3,18 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/api_client.dart';
-import '../../core/app_mode.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
 import '../discover/discover_common.dart';
 
 /// Settings root + sub-pages (privacy, notification prefs, blocked, muted,
-/// language) and the exit-demo / sign-out actions.
+/// language) and the sign-out action.
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final mode = context.watch<AppModeController>();
     final session = context.read<Session>();
     return Scaffold(
       appBar: AppBar(
@@ -25,32 +23,6 @@ class SettingsPage extends StatelessWidget {
       ),
       body: ListView(
         children: [
-          if (mode.isDemo)
-            Container(
-              margin: const EdgeInsets.all(14),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  KliqColors.cyan.withValues(alpha: 0.15),
-                  KliqColors.pink.withValues(alpha: 0.15)
-                ]),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: KliqColors.border),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.play_circle_outline, color: KliqColors.cyan),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Demo mode — Firebase & Supabase are disabled. '
-                      'All data is local and resets on restart.',
-                      style: TextStyle(fontSize: 12.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           _tile(context, Icons.person_outline, 'Edit profile',
               '/edit-profile'),
           _tile(context, Icons.lock_outline, 'Privacy',
@@ -65,21 +37,15 @@ class SettingsPage extends StatelessWidget {
               '/settings/language'),
           _tile(context, Icons.bookmark_border, 'Saved posts', '/saved'),
           _tile(context, Icons.people_outline, 'Friends', '/friends'),
-          _tile(context, Icons.account_balance_wallet_outlined, 'Wallet',
-              '/wallet'),
-          _tile(context, Icons.storefront_outlined, 'Customize shop',
-              '/customize-shop'),
           const Divider(height: 24),
           ListTile(
-            leading: Icon(
-                mode.isDemo ? Icons.exit_to_app : Icons.logout,
-                color: KliqColors.danger),
-            title: Text(mode.isDemo ? 'Exit demo' : 'Sign out',
-                style: const TextStyle(color: KliqColors.danger)),
+            leading: const Icon(Icons.logout, color: KliqColors.danger),
+            title: const Text('Sign out',
+                style: TextStyle(color: KliqColors.danger)),
             onTap: () async {
               final router = GoRouter.of(context);
-              await session.exitToEntry();
-              router.go('/entry');
+              await session.logout();
+              router.go('/login');
             },
           ),
           const SizedBox(height: 24),

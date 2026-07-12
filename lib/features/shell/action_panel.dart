@@ -183,8 +183,8 @@ class _ActionPanel extends StatelessWidget {
                   onPressed: () async {
                     final router = GoRouter.of(context);
                     Navigator.of(context).pop();
-                    await session.exitToEntry();
-                    router.go('/entry');
+                    await session.logout();
+                    router.go('/login');
                   },
                   icon: const Icon(Icons.logout,
                       size: 16, color: KliqColors.danger),

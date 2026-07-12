@@ -6,7 +6,6 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'api_client.dart';
 import 'config.dart';
-import 'demo/demo_backend.dart';
 
 /// Global refresh signal: bumped whenever the server announces that the
 /// underlying data changed wholesale (e.g. an admin cleared/loaded demo
@@ -41,10 +40,6 @@ class WsService {
 
   void connect() {
     _shouldRun = true;
-    if (Api.instance.isDemo) {
-      DemoBackend.instance.attachWs(_events);
-      return;
-    }
     final token = Api.instance.token;
     if (token == null) return;
     _open(token);
@@ -85,15 +80,11 @@ class WsService {
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(const Duration(seconds: 3), () {
       final token = Api.instance.token;
-      if (_shouldRun && token != null && !Api.instance.isDemo) _open(token);
+      if (_shouldRun && token != null) _open(token);
     });
   }
 
   void send(Map<String, dynamic> message) {
-    if (Api.instance.isDemo) {
-      DemoBackend.instance.handleWsSend(message, _events);
-      return;
-    }
     _channel?.sink.add(jsonEncode(message));
   }
 
@@ -119,6 +110,5 @@ class WsService {
     _sub?.cancel();
     _channel?.sink.close();
     _channel = null;
-    DemoBackend.instance.detachWs();
   }
 }

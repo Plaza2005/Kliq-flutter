@@ -1,15 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/common/placeholder_page.dart';
 import '../../features/discover/explore_page.dart';
-import '../../features/entry/entry_page.dart';
 import '../../features/home/home_feed_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/reels/reels_page.dart';
 import '../../features/studio/create_page.dart';
 import '../../features/shell/app_shell.dart';
-import '../app_mode.dart';
 import '../session.dart';
 import 'routes_auth.dart';
 import 'routes_discover.dart';
@@ -20,33 +17,25 @@ import 'routes_studio.dart';
 
 /// Assembles the app router. Feature teams edit their own routes_*.dart
 /// file; this file should rarely need to change.
-GoRouter buildRouter(AppModeController mode, Session session) {
+GoRouter buildRouter(Session session) {
   return GoRouter(
-    initialLocation: '/entry',
-    refreshListenable: Listenable.merge([mode, session]),
+    initialLocation: '/home',
+    refreshListenable: session,
     redirect: (context, state) {
       final path = state.uri.path;
-      final onEntry = path == '/entry';
       final onAuth = authRoutes.any((r) =>
           r is GoRoute && path.startsWith(r.path.split('/:').first));
 
-      // No mode chosen yet -> entry screen (the Demo button lives there).
-      if (!mode.isChosen) return onEntry ? null : '/entry';
-
-      // Demo mode is always "signed in".
-      if (mode.isDemo) return (onEntry || onAuth) ? '/home' : null;
-
-      // Live mode: gate the app behind auth.
+      // Gate the app behind auth.
       if (!session.isAuthed && !session.isRestoring) {
-        return (onEntry || onAuth) ? null : '/login';
+        return onAuth ? null : '/login';
       }
-      if (session.isAuthed && (onEntry || path == '/login' || path == '/register')) {
+      if (session.isAuthed && (path == '/login' || path == '/register')) {
         return '/home';
       }
       return null;
     },
     routes: [
-      GoRoute(path: '/entry', builder: (c, s) => const EntryPage()),
       ...authRoutes,
 
       // ── Main shell: bottom tabs / side rail ──────────────────────────────
