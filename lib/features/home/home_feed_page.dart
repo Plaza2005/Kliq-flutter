@@ -26,7 +26,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
   final _posts = <Post>[];
   var _stories = <StoryGroup>[];
 
-  String _tab = 'for_you';
+  final String _tab = 'for_you';
   int _page = 1;
   bool _hasMore = true;
   bool _loading = true;
@@ -142,12 +142,6 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     }
   }
 
-  void _switchTab(String tab) {
-    if (_tab == tab) return;
-    setState(() => _tab = tab);
-    _load(reset: true);
-  }
-
   @override
   Widget build(BuildContext context) {
     final session = context.watch<Session>();
@@ -190,7 +184,6 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
           SliverToBoxAdapter(
             child: Column(
               children: [
-                _tabBar(),
                 StoryBar(
                   groups: _stories,
                   myAvatarUrl: session.user?['avatarUrl'] as String?,
@@ -210,12 +203,9 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                     const Icon(Icons.camera_alt_outlined,
                         size: 48, color: KliqColors.textMuted),
                     const SizedBox(height: 12),
-                    Text(
-                      _tab == 'following'
-                          ? 'Follow people to see their posts here'
-                          : 'No posts yet',
-                      style:
-                          const TextStyle(color: KliqColors.textSecondary),
+                    const Text(
+                      'No posts yet',
+                      style: TextStyle(color: KliqColors.textSecondary),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
@@ -254,49 +244,6 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
     );
   }
 
-  Widget _tabBar() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _tabButton('For You', 'for_you'),
-          const SizedBox(width: 28),
-          _tabButton('Following', 'following'),
-        ],
-      ),
-    );
-  }
-
-  Widget _tabButton(String label, String value) {
-    final active = _tab == value;
-    return GestureDetector(
-      onTap: () => _switchTab(value),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-              color:
-                  active ? KliqColors.textPrimary : KliqColors.textMuted,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            height: 2,
-            width: 36,
-            decoration: BoxDecoration(
-              gradient: active ? KliqColors.storyRing : null,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _ErrorState extends StatelessWidget {

@@ -6,15 +6,41 @@ import '../../core/theme.dart';
 import '../discover/discover_common.dart';
 import 'live_widgets.dart';
 
-/// Grid of everyone currently live, with a Go Live shortcut.
-class LiveListPage extends StatefulWidget {
+/// Full page at `/live`: the live-streams grid with an app bar + Go Live.
+class LiveListPage extends StatelessWidget {
   const LiveListPage({super.key});
 
   @override
-  State<LiveListPage> createState() => _LiveListPageState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Live Now',
+            style: TextStyle(fontWeight: FontWeight.w800)),
+        actions: [
+          TextButton.icon(
+            onPressed: () => context.push('/go-live'),
+            icon: const Icon(Icons.sensors, color: KliqColors.live),
+            label: const Text('Go Live',
+                style: TextStyle(
+                    color: KliqColors.live, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+      body: const LiveStreamsView(),
+    );
+  }
 }
 
-class _LiveListPageState extends State<LiveListPage> {
+/// Reusable grid of everyone currently live. Used by [LiveListPage] and by the
+/// Reels page's "Live" tab.
+class LiveStreamsView extends StatefulWidget {
+  const LiveStreamsView({super.key});
+
+  @override
+  State<LiveStreamsView> createState() => _LiveStreamsViewState();
+}
+
+class _LiveStreamsViewState extends State<LiveStreamsView> {
   List<Map<String, dynamic>> _streams = [];
   bool _loading = true;
   String? _error;
@@ -44,21 +70,7 @@ class _LiveListPageState extends State<LiveListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Live Now',
-            style: TextStyle(fontWeight: FontWeight.w800)),
-        actions: [
-          TextButton.icon(
-            onPressed: () => context.push('/go-live'),
-            icon: const Icon(Icons.sensors, color: KliqColors.live),
-            label: const Text('Go Live',
-                style: TextStyle(
-                    color: KliqColors.live, fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-      body: _loading
+    return _loading
           ? const CenterSpinner()
           : _error != null
               ? ErrorState(message: _error!, onRetry: _load)
@@ -169,7 +181,6 @@ class _LiveListPageState extends State<LiveListPage> {
                           );
                         },
                       ),
-                    ),
-    );
+                    );
   }
 }

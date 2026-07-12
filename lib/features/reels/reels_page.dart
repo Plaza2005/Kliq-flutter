@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../core/ws_service.dart';
 import '../common/kliq_video.dart';
 import '../discover/discover_common.dart';
+import '../live/live_list_page.dart';
 
 /// TikTok-style full-screen vertical reels swiper. One video plays at a
 /// time; double-tap to like; overlay shows author/caption/sound and the
@@ -24,6 +25,9 @@ class _ReelsPageState extends State<ReelsPage> {
   String? _error;
   int _current = 0;
 
+  /// for_you | following | live
+  String _tab = 'for_you';
+
   @override
   void initState() {
     super.initState();
@@ -39,7 +43,7 @@ class _ReelsPageState extends State<ReelsPage> {
   }
 
   void _onDataEpoch() {
-    if (!mounted) return;
+    if (!mounted || _tab == 'live') return;
     setState(() {
       _loading = true;
       _error = null;
@@ -47,13 +51,23 @@ class _ReelsPageState extends State<ReelsPage> {
     _load();
   }
 
+  void _switchTab(String tab) {
+    if (_tab == tab) return;
+    setState(() {
+      _tab = tab;
+      if (tab != 'live') {
+        _loading = true;
+        _error = null;
+        _current = 0;
+      }
+    });
+    if (tab != 'live') _load();
+  }
+
   Future<void> _load() async {
     try {
-      final data = await Api.instance.get('/reels');
-      var reels = asMapList(data, key: 'reels');
-      if (reels.isEmpty) {
-        reels = asMapList(await Api.instance.get('/posts/reels'));
-      }
+      final data = await Api.instance.get('/posts/reels', query: {'tab': _tab});
+      final reels = asMapList(data, key: 'posts');
       if (!mounted) return;
       setState(() {
         _reels = reels;
@@ -82,40 +96,107 @@ class _ReelsPageState extends State<ReelsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: _loading
-          ? const CenterSpinner()
-          : _error != null
-              ? ErrorState(message: _error!, onRetry: _load)
-              : _reels.isEmpty
-                  ? const EmptyState(
-                      icon: Icons.movie_outlined, title: 'No reels yet')
-                  : Stack(
-                      children: [
-                        PageView.builder(
-                          controller: _pager,
-                          scrollDirection: Axis.vertical,
-                          itemCount: _reels.length,
-                          onPageChanged: (i) =>
-                              setState(() => _current = i),
-                          itemBuilder: (context, i) => _ReelItem(
-                            key: ValueKey(_reels[i]['id']),
-                            reel: _reels[i],
-                            active: i == _current,
-                            onLike: () => _toggleLike(i),
-                          ),
-                        ),
-                        SafeArea(
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: BackButton(
-                              onPressed: () => context.canPop()
-                                  ? context.pop()
-                                  : context.go('/home'),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+      body: Stack(
+        children: [
+          Positioned.fill(child: _content()),
+          // TikTok-style top tabs: For You · Following · Live
+          SafeArea(
+            child: Align(alignment: Alignment.topCenter, child: _topTabs()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _content() {
+    if (_tab == 'live') return const LiveStreamsView();
+    if (_loading) return const CenterSpinner();
+    if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+    if (_reels.isEmpty) {
+      return EmptyState(
+        icon: Icons.movie_creation_outlined,
+        title: _tab == 'following'
+            ? 'No reels from people you follow yet'
+            : 'No reels yet',
+        actionLabel: 'Create reel',
+        onAction: () => context.go('/create'),
+      );
+    }
+    return PageView.builder(
+      controller: _pager,
+      scrollDirection: Axis.vertical,
+      itemCount: _reels.length,
+      onPageChanged: (i) => setState(() => _current = i),
+      itemBuilder: (context, i) => _ReelItem(
+        key: ValueKey(_reels[i]['id']),
+        reel: _reels[i],
+        active: i == _current,
+        onLike: () => _toggleLike(i),
+      ),
+    );
+  }
+
+  Widget _topTabs() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _tabButton('For You', 'for_you'),
+          _dot(),
+          _tabButton('Following', 'following'),
+          _dot(),
+          _tabButton('Live', 'live', isLive: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _dot() => const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 10),
+        child: Text('·', style: TextStyle(color: Colors.white38, fontSize: 15)),
+      );
+
+  Widget _tabButton(String label, String value, {bool isLive = false}) {
+    final active = _tab == value;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _switchTab(value),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isLive)
+                Padding(
+                  padding: const EdgeInsets.only(right: 5),
+                  child: Icon(Icons.sensors,
+                      size: 15,
+                      color: active ? KliqColors.live : Colors.white70),
+                ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                  color: active ? Colors.white : Colors.white60,
+                  shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Container(
+            height: 2.5,
+            width: 22,
+            decoration: BoxDecoration(
+              gradient: active ? KliqColors.storyRing : null,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
