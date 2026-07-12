@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'api_client.dart';
 import 'backend/firebase_service.dart';
@@ -44,6 +45,28 @@ class Session extends ChangeNotifier {
   Future<void> login(String identifier, String password) async {
     final res = await Api.instance.post('/auth/login',
         body: {'identifier': identifier, 'password': password});
+    await Api.instance.setToken(res['token'] as String?);
+    user = (res['user'] as Map?)?.cast<String, dynamic>();
+    WsService.instance.connect();
+    _registerFcmToken();
+    notifyListeners();
+  }
+
+  /// Sign in / sign up with Google. Requires a Google OAuth Client ID to be
+  /// configured (see GOOGLE_SIGNIN_SETUP.md) — until then [GoogleSignIn.signIn]
+  /// throws and the UI shows a friendly message.
+  ///
+  /// Flow: google_sign_in returns an ID token → POST /auth/google → the server
+  /// verifies the token, finds-or-creates the user, and returns our own JWT.
+  Future<void> googleSignIn() async {
+    final account = await GoogleSignIn(scopes: const ['email', 'profile']).signIn();
+    if (account == null) return; // user cancelled the picker
+    final auth = await account.authentication;
+    final idToken = auth.idToken;
+    if (idToken == null) {
+      throw Exception('Google did not return an ID token');
+    }
+    final res = await Api.instance.post('/auth/google', body: {'idToken': idToken});
     await Api.instance.setToken(res['token'] as String?);
     user = (res['user'] as Map?)?.cast<String, dynamic>();
     WsService.instance.connect();

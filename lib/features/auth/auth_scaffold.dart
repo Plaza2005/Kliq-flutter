@@ -2,6 +2,29 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 
+/// Turns raw API/network errors into a message a user can act on, instead of
+/// dumping a server "Internal Server Error" string on an auth screen.
+String friendlyAuthError(Object e) {
+  final s = e.toString().replaceFirst('Exception: ', '');
+  final lower = s.toLowerCase();
+  if (lower.contains('internal server error') || lower.contains('500')) {
+    return 'Something went wrong on our end. Please try again in a moment.';
+  }
+  if (lower.contains('socketexception') ||
+      lower.contains('network') ||
+      lower.contains('connection') ||
+      lower.contains('timeout')) {
+    return "Can't reach the server. Check your connection and try again.";
+  }
+  if (lower.contains('sign_in_failed') ||
+      lower.contains('apiexception: 10') ||
+      lower.contains('clientid') ||
+      lower.contains('id token')) {
+    return "Google sign-in isn't set up yet. Use email/username for now.";
+  }
+  return s;
+}
+
 /// Shared centered-card layout for all auth screens.
 class AuthScaffold extends StatelessWidget {
   const AuthScaffold({super.key, required this.children, this.title});
@@ -87,6 +110,76 @@ class AuthError extends StatelessWidget {
       child: Text(message!,
           textAlign: TextAlign.center,
           style: const TextStyle(color: KliqColors.danger, fontSize: 13)),
+    );
+  }
+}
+
+/// "or" divider used between the primary auth button and the social buttons.
+class AuthDivider extends StatelessWidget {
+  const AuthDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: KliqColors.border)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: Text('or',
+                style: TextStyle(color: KliqColors.textMuted, fontSize: 12)),
+          ),
+          Expanded(child: Divider(color: KliqColors.border)),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Continue with Google" button. Wired to [onPressed] (Session.googleSignIn);
+/// only functions once a Google OAuth Client ID is configured — see
+/// GOOGLE_SIGNIN_SETUP.md.
+class GoogleButton extends StatelessWidget {
+  const GoogleButton({super.key, required this.onPressed, this.busy = false});
+
+  final VoidCallback? onPressed;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        side: BorderSide.none,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      onPressed: busy ? null : onPressed,
+      child: busy
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.black54),
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Google "G" wordmark stand-in (blue G) — replace with the
+                // official multicolour asset if you add one to assets/.
+                const Text('G',
+                    style: TextStyle(
+                        color: Color(0xFF4285F4),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18)),
+                const SizedBox(width: 10),
+                const Text('Continue with Google',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
     );
   }
 }

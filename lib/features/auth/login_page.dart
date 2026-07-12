@@ -14,21 +14,22 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _email = TextEditingController();
+  final _identifier = TextEditingController();
   final _password = TextEditingController();
   bool _busy = false;
+  bool _googleBusy = false;
   String? _error;
 
   @override
   void dispose() {
-    _email.dispose();
+    _identifier.dispose();
     _password.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    if (_email.text.trim().isEmpty || _password.text.isEmpty) {
-      setState(() => _error = 'Enter your email and password');
+    if (_identifier.text.trim().isEmpty || _password.text.isEmpty) {
+      setState(() => _error = 'Enter your email or username and password');
       return;
     }
     setState(() {
@@ -36,12 +37,28 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
     try {
-      await context.read<Session>().login(_email.text.trim(), _password.text);
+      await context.read<Session>().login(_identifier.text.trim(), _password.text);
       if (mounted) context.go('/home');
     } catch (e) {
       setState(() {
         _busy = false;
-        _error = e.toString();
+        _error = friendlyAuthError(e);
+      });
+    }
+  }
+
+  Future<void> _google() async {
+    setState(() {
+      _googleBusy = true;
+      _error = null;
+    });
+    try {
+      await context.read<Session>().googleSignIn();
+      if (mounted) context.go('/home');
+    } catch (e) {
+      setState(() {
+        _googleBusy = false;
+        _error = friendlyAuthError(e);
       });
     }
   }
@@ -52,10 +69,10 @@ class _LoginPageState extends State<LoginPage> {
       title: 'Welcome back',
       children: [
         AuthField(
-          controller: _email,
-          hint: 'Email',
-          keyboardType: TextInputType.emailAddress,
-          autofillHints: const [AutofillHints.email],
+          controller: _identifier,
+          hint: 'Email or username',
+          keyboardType: TextInputType.text,
+          autofillHints: const [AutofillHints.username, AutofillHints.email],
         ),
         AuthField(
           controller: _password,
@@ -65,6 +82,9 @@ class _LoginPageState extends State<LoginPage> {
         ),
         AuthError(_error),
         AuthButton(label: 'Sign In', busy: _busy, onPressed: _submit),
+        const AuthDivider(),
+        GoogleButton(busy: _googleBusy, onPressed: _google),
+        const SizedBox(height: 4),
         TextButton(
           onPressed: () => context.push('/forgot-password'),
           child: const Text('Forgot password?',
@@ -83,12 +103,6 @@ class _LoginPageState extends State<LoginPage> {
                       color: KliqColors.cyan, fontWeight: FontWeight.w600)),
             ),
           ],
-        ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: () => context.go('/entry'),
-          child: const Text('Back',
-              style: TextStyle(color: KliqColors.textMuted)),
         ),
       ],
     );

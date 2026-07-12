@@ -19,6 +19,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   bool _busy = false;
+  bool _googleBusy = false;
   String? _error;
 
   @override
@@ -57,7 +58,23 @@ class _RegisterPageState extends State<RegisterPage> {
     } catch (e) {
       setState(() {
         _busy = false;
-        _error = e.toString();
+        _error = friendlyAuthError(e);
+      });
+    }
+  }
+
+  Future<void> _google() async {
+    setState(() {
+      _googleBusy = true;
+      _error = null;
+    });
+    try {
+      await context.read<Session>().googleSignIn();
+      if (mounted) context.go('/home');
+    } catch (e) {
+      setState(() {
+        _googleBusy = false;
+        _error = friendlyAuthError(e);
       });
     }
   }
@@ -78,6 +95,8 @@ class _RegisterPageState extends State<RegisterPage> {
             controller: _confirm, hint: 'Confirm password', obscure: true),
         AuthError(_error),
         AuthButton(label: 'Create Account', busy: _busy, onPressed: _submit),
+        const AuthDivider(),
+        GoogleButton(busy: _googleBusy, onPressed: _google),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,

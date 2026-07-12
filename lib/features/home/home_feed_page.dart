@@ -8,6 +8,7 @@ import '../../core/api_client.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
 import '../../core/ws_service.dart';
+import '../shell/action_panel.dart';
 import 'feed_models.dart';
 import 'widgets/post_card.dart';
 import 'widgets/story_bar.dart';
@@ -162,6 +163,7 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
             icon: const Icon(Icons.send_outlined),
             onPressed: () => context.push('/inbox'),
           ),
+          const ActionPanelButton(),
         ],
       ),
       body: _buildBody(session),
@@ -214,6 +216,12 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                           : 'No posts yet',
                       style:
                           const TextStyle(color: KliqColors.textSecondary),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () => context.go('/create'),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Create a post'),
                     ),
                   ],
                 ),
@@ -310,7 +318,7 @@ class _ErrorState extends StatelessWidget {
             const Text('Could not load your feed',
                 style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
-            Text(message,
+            Text(_humanize(message),
                 textAlign: TextAlign.center,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -322,5 +330,20 @@ class _ErrorState extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Keep raw server strings like "Internal Server Error" off the screen.
+  static String _humanize(String message) {
+    final lower = message.toLowerCase();
+    if (lower.contains('internal server error') || lower.contains('500')) {
+      return 'The server had a hiccup. Pull to refresh or tap Retry.';
+    }
+    if (lower.contains('socket') ||
+        lower.contains('connection') ||
+        lower.contains('timeout') ||
+        lower.contains('network')) {
+      return "Can't reach the server. Check your connection and try again.";
+    }
+    return message;
   }
 }
