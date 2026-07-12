@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../core/api_client.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
+import '../../core/ws_service.dart';
 import '../shell/action_panel.dart';
 import 'feed_models.dart';
 import 'widgets/post_card.dart';
@@ -36,15 +37,23 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
   void initState() {
     super.initState();
     _scroll.addListener(_onScroll);
+    dataEpoch.addListener(_onDataEpoch);
     _load(reset: true);
     _loadStories();
   }
 
   @override
   void dispose() {
+    dataEpoch.removeListener(_onDataEpoch);
     _scroll.removeListener(_onScroll);
     _scroll.dispose();
     super.dispose();
+  }
+
+  void _onDataEpoch() {
+    if (!mounted) return;
+    _load(reset: true);
+    _loadStories();
   }
 
   void _onScroll() {

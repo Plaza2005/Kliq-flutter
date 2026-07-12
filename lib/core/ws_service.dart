@@ -8,6 +8,11 @@ import 'api_client.dart';
 import 'config.dart';
 import 'demo/demo_backend.dart';
 
+/// Global refresh signal: bumped whenever the server announces that the
+/// underlying data changed wholesale (e.g. an admin cleared/loaded demo
+/// data). Pages listen and re-fetch their content when it ticks.
+final dataEpoch = ValueNotifier<int>(0);
+
 /// Realtime service matching the server protocol
 /// (`ws://host:4000/ws?token=[jwt]`, JSON messages).
 ///
@@ -54,7 +59,12 @@ class WsService {
         (raw) {
           try {
             final msg = jsonDecode(raw as String);
-            if (msg is Map<String, dynamic>) _events.add(msg);
+            if (msg is Map<String, dynamic>) {
+              _events.add(msg);
+              if (msg['type'] == 'admin:demo-data-changed') {
+                dataEpoch.value++;
+              }
+            }
           } catch (_) {}
         },
         onDone: _scheduleReconnect,

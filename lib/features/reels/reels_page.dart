@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
+import '../../core/ws_service.dart';
 import '../common/kliq_video.dart';
 import '../discover/discover_common.dart';
 
@@ -26,13 +27,24 @@ class _ReelsPageState extends State<ReelsPage> {
   @override
   void initState() {
     super.initState();
+    dataEpoch.addListener(_onDataEpoch);
     _load();
   }
 
   @override
   void dispose() {
+    dataEpoch.removeListener(_onDataEpoch);
     _pager.dispose();
     super.dispose();
+  }
+
+  void _onDataEpoch() {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    _load();
   }
 
   Future<void> _load() async {

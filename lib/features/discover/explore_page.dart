@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
+import '../../core/ws_service.dart';
 import '../shell/action_panel.dart';
 import 'discover_common.dart';
 
@@ -29,7 +30,19 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   void initState() {
     super.initState();
+    dataEpoch.addListener(_onDataEpoch);
     _load();
+  }
+
+  @override
+  void dispose() {
+    dataEpoch.removeListener(_onDataEpoch);
+    super.dispose();
+  }
+
+  void _onDataEpoch() {
+    if (!mounted) return;
+    _load(refresh: true);
   }
 
   Future<void> _load({bool refresh = false}) async {
