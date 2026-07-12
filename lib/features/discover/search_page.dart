@@ -95,7 +95,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     final hasQuery = _controller.text.trim().isNotEmpty;
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: TextField(
@@ -127,7 +127,6 @@ class _SearchPageState extends State<SearchPage> {
                   tabs: [
                     Tab(text: 'Users'),
                     Tab(text: 'Posts'),
-                    Tab(text: 'Communities'),
                   ],
                 )
               : null,
@@ -140,7 +139,6 @@ class _SearchPageState extends State<SearchPage> {
                     children: [
                       _usersTab(),
                       _postsTab(),
-                      _communitiesTab(),
                     ],
                   ),
       ),
@@ -152,7 +150,7 @@ class _SearchPageState extends State<SearchPage> {
       return const EmptyState(
           icon: Icons.search,
           title: 'Search KLIQ',
-          subtitle: 'Find creators, posts, hashtags and communities');
+          subtitle: 'Find creators, posts and hashtags');
     }
     return ListView(
       children: [
@@ -255,30 +253,4 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _communitiesTab() {
-    final comms = asMapList(_results['communities'], key: 'communities');
-    if (comms.isEmpty) {
-      return const EmptyState(
-          icon: Icons.groups_outlined, title: 'No communities found');
-    }
-    return ListView.builder(
-      itemCount: comms.length,
-      itemBuilder: (context, i) {
-        final c = comms[i];
-        return ListTile(
-          leading: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-                width: 44, height: 44, child: NetImg(c['avatarUrl']?.toString())),
-          ),
-          title: Text(pickStr(c, ['name']),
-              style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text(
-              '${fmtCount(pickInt(c, ['memberCount']))} members',
-              style: const TextStyle(color: KliqColors.textMuted)),
-          onTap: () => context.push('/community/${c['id']}'),
-        );
-      },
-    );
-  }
 }

@@ -181,7 +181,7 @@ class _PostsStudioPageState extends State<PostsStudioPage> {
   @override
   Widget build(BuildContext context) {
     return StudioModuleScaffold(
-      module: studioModules[0],
+      module: moduleByKey('posts'),
       composer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -329,7 +329,7 @@ class _ReelsStudioPageState extends State<ReelsStudioPage> {
   @override
   Widget build(BuildContext context) {
     return StudioModuleScaffold(
-      module: studioModules[1],
+      module: moduleByKey('reels'),
       composer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -454,7 +454,7 @@ class _StoriesStudioPageState extends State<StoriesStudioPage> {
   @override
   Widget build(BuildContext context) {
     return StudioModuleScaffold(
-      module: studioModules[3],
+      module: moduleByKey('stories'),
       composer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -501,7 +501,7 @@ class LiveStudioPage extends StatelessWidget {
   Widget build(BuildContext context) {
     context.watch<Session>();
     return StudioModuleScaffold(
-      module: studioModules[4],
+      module: moduleByKey('live'),
       composer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
-import '../shell/action_panel.dart';
 import 'studio_common.dart';
 
 /// The Create tab (center of the bottom bar): quick access to every
-/// creation flow plus the full Studio.
+/// creation flow (Post, Reel, Story) plus Go Live.
 class CreatePage extends StatelessWidget {
   const CreatePage({super.key});
 
@@ -16,35 +15,10 @@ class CreatePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Create',
             style: TextStyle(fontWeight: FontWeight.w800)),
-        actions: const [ActionPanelButton()],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: KliqColors.gradient,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-              leading:
-                  const Icon(Icons.auto_awesome, color: Colors.white, size: 30),
-              title: const Text('Open Studio',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16)),
-              subtitle: const Text(
-                  'Content manager, analytics & Amplify',
-                  style: TextStyle(color: Colors.white70, fontSize: 12.5)),
-              trailing:
-                  const Icon(Icons.chevron_right, color: Colors.white),
-              onTap: () => context.push('/studio'),
-            ),
-          ),
-          const SizedBox(height: 12),
           // Direct Go Live action — straight to the broadcaster.
           Material(
             color: KliqColors.surface,

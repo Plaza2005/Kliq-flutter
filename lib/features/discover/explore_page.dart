@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../core/ws_service.dart';
-import '../shell/action_panel.dart';
 import 'discover_common.dart';
 
 /// Explore tab — trending hashtags, section chips and a masonry grid of
@@ -17,7 +16,7 @@ class ExplorePage extends StatefulWidget {
   State<ExplorePage> createState() => _ExplorePageState();
 }
 
-enum _Section { posts, reels, live, products }
+enum _Section { posts, reels, live }
 
 class _ExplorePageState extends State<ExplorePage> {
   _Section _section = _Section.posts;
@@ -81,8 +80,6 @@ class _ExplorePageState extends State<ExplorePage> {
         return asMapList(await Api.instance.get('/posts/reels'));
       case _Section.live:
         return asMapList(await Api.instance.get('/live/streams'));
-      case _Section.products:
-        return asMapList(await Api.instance.get('/marketplace/products'));
     }
   }
 
@@ -146,8 +143,6 @@ class _ExplorePageState extends State<ExplorePage> {
               ),
             ),
           ),
-          const SizedBox(width: 4),
-          const ActionPanelButton(),
         ],
       ),
     );
@@ -158,7 +153,6 @@ class _ExplorePageState extends State<ExplorePage> {
       _Section.posts: ('Posts', Icons.grid_on),
       _Section.reels: ('Reels', Icons.movie_outlined),
       _Section.live: ('Live', Icons.sensors),
-      _Section.products: ('Products', Icons.storefront_outlined),
     };
     return SizedBox(
       height: 52,
@@ -252,8 +246,6 @@ class _ExplorePageState extends State<ExplorePage> {
         return [_reelsGrid(items)];
       case _Section.live:
         return [_liveList(items)];
-      case _Section.products:
-        return [_productsGrid(items)];
     }
   }
 
@@ -464,71 +456,6 @@ class _ExplorePageState extends State<ExplorePage> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _productsGrid(List<Map<String, dynamic>> items) {
-    return SliverPadding(
-      padding: const EdgeInsets.all(12),
-      sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.72,
-        ),
-        delegate: SliverChildBuilderDelegate(
-          childCount: items.length,
-          (context, i) {
-            final p = items[i];
-            final img = (p['imageUrls'] is List &&
-                    (p['imageUrls'] as List).isNotEmpty)
-                ? (p['imageUrls'] as List).first.toString()
-                : pickStr(p, ['imageUrl', 'mediaUrl', 'thumbUrl']);
-            final currency = pickStr(p, ['currency'], fallback: 'N\$');
-            final price = p['price'];
-            return GestureDetector(
-              onTap: () => context.push('/marketplace/product/${p['id']}'),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: KliqColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: KliqColors.border),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: SizedBox(
-                        width: double.infinity, child: NetImg(img))),
-                    Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(pickStr(p, ['name', 'title']),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: KliqColors.textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 4),
-                          Text('$currency${price ?? '—'}',
-                              style: const TextStyle(
-                                  color: KliqColors.cyan,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
       ),
     );
   }

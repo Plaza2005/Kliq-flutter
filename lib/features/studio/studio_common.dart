@@ -25,6 +25,10 @@ class StudioModule {
   final Color color;
 }
 
+/// Look a module up by key (robust against list reordering).
+StudioModule moduleByKey(String key) =>
+    studioModules.firstWhere((m) => m.key == key);
+
 const studioModules = <StudioModule>[
   StudioModule(
     key: 'posts',
@@ -43,14 +47,6 @@ const studioModules = <StudioModule>[
     color: KliqColors.pink,
   ),
   StudioModule(
-    key: 'kliqtube',
-    label: 'KliqTube',
-    description: 'Long-form video channel',
-    icon: Icons.video_library_outlined,
-    route: '/studio/kliqtube',
-    color: Color(0xFFF87171),
-  ),
-  StudioModule(
     key: 'stories',
     label: 'Stories',
     description: '24-hour ephemeral moments',
@@ -65,22 +61,6 @@ const studioModules = <StudioModule>[
     icon: Icons.sensors,
     route: '/studio/live',
     color: Color(0xFFEF4444),
-  ),
-  StudioModule(
-    key: 'marketplace',
-    label: 'Marketplace',
-    description: 'Sell products to your followers',
-    icon: Icons.storefront_outlined,
-    route: '/studio/marketplace',
-    color: Color(0xFF34D399),
-  ),
-  StudioModule(
-    key: 'kliqstream',
-    label: 'KliqStream',
-    description: 'Original shows & series',
-    icon: Icons.theaters_outlined,
-    route: '/studio/kliqstream',
-    color: Color(0xFFFBBF24),
   ),
 ];
 

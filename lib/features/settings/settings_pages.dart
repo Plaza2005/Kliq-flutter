@@ -154,8 +154,6 @@ class _NotificationPrefsPageState extends State<NotificationPrefsPage> {
     'New followers': true,
     'Direct messages': true,
     'Live streams': true,
-    'Marketplace orders': true,
-    'Community activity': false,
   };
 
   @override
