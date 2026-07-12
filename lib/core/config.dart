@@ -13,7 +13,13 @@ class AppConfig {
   static String get apiUrl {
     const fromEnv = String.fromEnvironment('API_URL');
     if (fromEnv.isNotEmpty) return fromEnv;
-    if (kIsWeb) return 'http://localhost:4000';
+    if (kIsWeb) {
+      // Talk to the API on whatever host the app was loaded from, so the same
+      // web build works at http://localhost:8080 AND http://<lan-ip>:8080
+      // (e.g. from a phone) without rebuilding. Falls back to localhost.
+      final host = Uri.base.host.isEmpty ? 'localhost' : Uri.base.host;
+      return 'http://$host:4000';
+    }
     // Android emulator maps host loopback to 10.0.2.2.
     try {
       if (Platform.isAndroid) return 'http://10.0.2.2:4000';
