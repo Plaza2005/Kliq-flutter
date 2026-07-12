@@ -75,7 +75,7 @@ class _ActionPanel extends StatelessWidget {
   void _go(BuildContext context, String path) {
     Navigator.of(context).pop();
     // Tab destinations use go (switch branch); the rest stack on top.
-    if (path == '/profile' || path == '/kliqtube') {
+    if (path == '/profile') {
       context.go(path);
     } else {
       context.push(path);

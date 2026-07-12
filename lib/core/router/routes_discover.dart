@@ -4,12 +4,12 @@ import '../../features/discover/search_page.dart';
 import '../../features/discover/sounds_page.dart';
 import '../../features/kliqstream/kliqstream_pages.dart';
 import '../../features/kliqtube/kliqtube_pages.dart';
-import '../../features/reels/reels_page.dart';
 
-/// Explore/search, reels, KliqTube and KliqStream surfaces.
+/// Explore/search, KliqTube and KliqStream surfaces. (Reels lives in the
+/// main shell as the index-3 tab, registered in app_router.dart.)
 final discoverRoutes = <RouteBase>[
   GoRoute(path: '/search', builder: (c, s) => const SearchPage()),
-  GoRoute(path: '/reels', builder: (c, s) => const ReelsPage()),
+  GoRoute(path: '/kliqtube', builder: (c, s) => const KliqTubePage()),
   GoRoute(
     path: '/kliqtube/watch/:id',
     builder: (c, s) =>

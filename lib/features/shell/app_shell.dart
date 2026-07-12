@@ -5,7 +5,7 @@ import '../../core/theme.dart';
 
 /// Main navigation shell: bottom tab bar on compact screens, side rail on
 /// wide screens (web/desktop). The five destinations mirror prot_3's
-/// SwipePager sections: Home, Explore, Create hub, KliqTube, Profile —
+/// SwipePager sections: Home, Explore, Create hub, Reels, Profile —
 /// swiping between the top-level branches is handled by the branch pages.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -16,7 +16,7 @@ class AppShell extends StatelessWidget {
     (icon: Icons.home_outlined, active: Icons.home, label: 'Home'),
     (icon: Icons.search_outlined, active: Icons.search, label: 'Explore'),
     (icon: Icons.add_box_outlined, active: Icons.add_box, label: 'Create'),
-    (icon: Icons.video_library_outlined, active: Icons.video_library, label: 'KliqTube'),
+    (icon: Icons.movie_creation_outlined, active: Icons.movie_creation, label: 'Reels'),
     (icon: Icons.person_outline, active: Icons.person, label: 'Profile'),
   ];
 
