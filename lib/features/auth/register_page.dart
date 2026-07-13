@@ -55,7 +55,8 @@ class _RegisterPageState extends State<RegisterPage> {
       await context
           .read<Session>()
           .register(email, _password.text, username);
-      if (mounted) context.go('/onboarding');
+      // The router guard bounces not-yet-onboarded users to /onboarding.
+      if (mounted) context.go('/home');
     } catch (e) {
       setState(() {
         _busy = false;

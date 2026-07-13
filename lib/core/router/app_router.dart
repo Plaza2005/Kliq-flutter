@@ -30,8 +30,13 @@ GoRouter buildRouter(Session session) {
       if (!session.isAuthed && !session.isRestoring) {
         return onAuth ? null : '/login';
       }
-      if (session.isAuthed && (path == '/login' || path == '/register')) {
-        return '/home';
+      if (session.isAuthed) {
+        // First-time users must complete onboarding before entering the app.
+        final user = session.user;
+        final onboarded = user?['isOnboarded'] == true ||
+            user?['onboardingComplete'] == true;
+        if (!onboarded && !onAuth) return '/onboarding';
+        if (path == '/login' || path == '/register') return '/home';
       }
       return null;
     },

@@ -93,15 +93,21 @@ class _OnboardingPageState extends State<OnboardingPage> {
       final patch = <String, dynamic>{
         if (_avatarUrl != null) 'avatarUrl': _avatarUrl,
         if (_bio.text.trim().isNotEmpty) 'bio': _bio.text.trim(),
+        'isOnboarded': true,
       };
-      if (patch.isNotEmpty) await Api.instance.patch('/auth/me', body: patch);
+      await Api.instance.patch('/auth/me', body: patch);
       await Api.instance.post('/users/onboarding', body: {
         'interests': _interests.toList(),
         'completedAll': !_skippedAny,
       }).catchError((_) => null);
       session.updateUser({...patch, 'onboardingComplete': true});
     } catch (_) {
-      // Onboarding must never block entry into the app.
+      // Onboarding must never block entry into the app: even if persisting
+      // fails, mark the session as onboarded locally so the router guard
+      // does not trap the user here. The server flag stays false, so
+      // onboarding simply re-runs on the next login.
+      session.updateUser(
+          {'isOnboarded': true, 'onboardingComplete': true});
     }
     router.go('/home');
   }
