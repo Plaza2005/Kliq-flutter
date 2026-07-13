@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/password_pages.dart';
 import '../../features/settings/settings_pages.dart';
 import '../../features/social/messaging_pages.dart';
 
@@ -19,6 +20,9 @@ final socialRoutes = <RouteBase>[
   ),
   // ── Settings ────────────────────────────────────────────────────────────
   GoRoute(path: '/settings', builder: (c, s) => const SettingsPage()),
+  GoRoute(
+      path: '/change-password',
+      builder: (c, s) => const ChangePasswordPage()),
   GoRoute(
       path: '/settings/privacy',
       builder: (c, s) => const PrivacySettingsPage()),

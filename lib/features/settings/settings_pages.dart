@@ -25,6 +25,8 @@ class SettingsPage extends StatelessWidget {
         children: [
           _tile(context, Icons.person_outline, 'Edit profile',
               '/edit-profile'),
+          _tile(context, Icons.password_outlined, 'Change password',
+              '/change-password'),
           _tile(context, Icons.lock_outline, 'Privacy',
               '/settings/privacy'),
           _tile(context, Icons.notifications_outlined,

@@ -190,3 +190,90 @@ class VerifyEmailPage extends StatelessWidget {
     );
   }
 }
+
+/// In-app "Change password" screen (reached from Settings). Verifies the
+/// current password server-side and sets a new one.
+class ChangePasswordPage extends StatefulWidget {
+  const ChangePasswordPage({super.key});
+
+  @override
+  State<ChangePasswordPage> createState() => _ChangePasswordPageState();
+}
+
+class _ChangePasswordPageState extends State<ChangePasswordPage> {
+  final _current = TextEditingController();
+  final _next = TextEditingController();
+  final _confirm = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _current.dispose();
+    _next.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_current.text.isEmpty || _next.text.isEmpty) {
+      setState(() => _error = 'Fill in every field');
+      return;
+    }
+    if (_next.text.length < 8) {
+      setState(() => _error = 'New password must be at least 8 characters');
+      return;
+    }
+    if (_next.text != _confirm.text) {
+      setState(() => _error = 'New passwords do not match');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      await Api.instance.post('/auth/change-password', body: {
+        'currentPassword': _current.text,
+        'newPassword': _next.text,
+      });
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Password changed')));
+      navigator.pop();
+    } catch (e) {
+      setState(() {
+        _busy = false;
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Change password',
+            style: TextStyle(fontWeight: FontWeight.w800)),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          AuthField(
+              controller: _current,
+              hint: 'Current password',
+              obscure: true),
+          AuthField(controller: _next, hint: 'New password', obscure: true),
+          AuthField(
+              controller: _confirm,
+              hint: 'Confirm new password',
+              obscure: true),
+          AuthError(_error),
+          AuthButton(
+              label: 'Update password', busy: _busy, onPressed: _submit),
+        ],
+      ),
+    );
+  }
+}
