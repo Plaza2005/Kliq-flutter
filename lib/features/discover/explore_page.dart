@@ -348,7 +348,7 @@ class _ExplorePageState extends State<ExplorePage> {
           (context, i) {
             final r = items[i];
             return GestureDetector(
-              onTap: () => context.push('/reels'),
+              onTap: () => context.push('/reel/${r['id']}'),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Stack(

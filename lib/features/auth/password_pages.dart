@@ -15,7 +15,6 @@ class ForgotPasswordPage extends StatefulWidget {
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _email = TextEditingController();
   bool _busy = false;
-  bool _sent = false;
   String? _error;
 
   Future<void> _submit() async {
@@ -27,10 +26,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     try {
       await Api.instance.post('/auth/forgot-password',
           body: {'email': _email.text.trim()});
-      setState(() {
-        _sent = true;
-        _busy = false;
-      });
+      if (!mounted) return;
+      // Hand off to a dedicated confirmation page.
+      context.go('/forgot-password/sent', extra: _email.text.trim());
     } catch (e) {
       setState(() {
         _busy = false;
@@ -43,44 +41,63 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Widget build(BuildContext context) {
     return AuthScaffold(
       title: 'Reset your password',
-      children: _sent
-          ? [
-              const Icon(Icons.mark_email_read_outlined,
-                  size: 48, color: KliqColors.success),
-              const SizedBox(height: 16),
-              const Text(
-                'If an account exists for that email, a reset link is on '
-                'its way. Check your inbox.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: KliqColors.textSecondary),
-              ),
-              const SizedBox(height: 20),
-              AuthButton(
-                  label: 'Back to Sign In',
-                  onPressed: () => context.go('/login')),
-            ]
-          : [
-              const Text(
-                'Enter the email linked to your account and we will send '
-                'you a reset link.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: KliqColors.textSecondary),
-              ),
-              const SizedBox(height: 20),
-              AuthField(
-                controller: _email,
-                hint: 'Email',
-                keyboardType: TextInputType.emailAddress,
-              ),
-              AuthError(_error),
-              AuthButton(
-                  label: 'Send Reset Link', busy: _busy, onPressed: _submit),
-              TextButton(
-                onPressed: () => context.go('/login'),
-                child: const Text('Back to Sign In',
-                    style: TextStyle(color: KliqColors.textMuted)),
-              ),
-            ],
+      children: [
+        const Text(
+          'Enter the email linked to your account and we will send '
+          'you a reset link.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: KliqColors.textSecondary),
+        ),
+        const SizedBox(height: 20),
+        AuthField(
+          controller: _email,
+          hint: 'Email',
+          keyboardType: TextInputType.emailAddress,
+        ),
+        AuthError(_error),
+        AuthButton(label: 'Send Reset Link', busy: _busy, onPressed: _submit),
+        TextButton(
+          onPressed: () => context.go('/login'),
+          child: const Text('Back to Sign In',
+              style: TextStyle(color: KliqColors.textMuted)),
+        ),
+      ],
+    );
+  }
+}
+
+/// Separate confirmation page shown after a reset link is requested.
+class ResetLinkSentPage extends StatelessWidget {
+  const ResetLinkSentPage({super.key, this.email});
+  final String? email;
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthScaffold(
+      title: 'Check your email',
+      children: [
+        const Icon(Icons.mark_email_read_outlined,
+            size: 56, color: KliqColors.success),
+        const SizedBox(height: 18),
+        Text(
+          email == null || email!.isEmpty
+              ? 'If an account exists for that email, a password reset link is '
+                  'on its way. Open it to choose a new password.'
+              : 'If an account exists for $email, a password reset link is on '
+                  'its way. Open it to choose a new password.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: KliqColors.textSecondary),
+        ),
+        const SizedBox(height: 24),
+        AuthButton(
+            label: 'Back to Sign In', onPressed: () => context.go('/login')),
+        const SizedBox(height: 4),
+        TextButton(
+          onPressed: () => context.go('/forgot-password'),
+          child: const Text('Use a different email',
+              style: TextStyle(color: KliqColors.textMuted)),
+        ),
+      ],
     );
   }
 }

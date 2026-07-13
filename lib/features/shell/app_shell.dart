@@ -3,6 +3,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 
+/// The bottom-nav branch index currently shown. Pages that need to know whether
+/// they're the visible tab (e.g. Reels, to stop video playing in the background)
+/// listen to this. Reels is branch index 3.
+final shellTabIndex = ValueNotifier<int>(0);
+
 /// Main navigation shell: bottom tab bar on compact screens, side rail on
 /// wide screens (web/desktop). The five destinations mirror prot_3's
 /// SwipePager sections: Home, Explore, Create hub, Reels, Profile —
@@ -29,6 +34,12 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Publish the active tab after the frame (avoids notifying mid-build).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (shellTabIndex.value != navigationShell.currentIndex) {
+        shellTabIndex.value = navigationShell.currentIndex;
+      }
+    });
     final wide = MediaQuery.sizeOf(context).width >= 900;
 
     if (wide) {

@@ -16,6 +16,7 @@ class KliqVideo extends StatefulWidget {
     this.loop = false,
     this.autoPlay = true,
     this.muted = false,
+    this.paused = false,
     this.fit = BoxFit.contain,
   });
 
@@ -24,6 +25,10 @@ class KliqVideo extends StatefulWidget {
   final bool loop;
   final bool autoPlay;
   final bool muted;
+
+  /// When true the player is paused; toggling it resumes/pauses. Used by reels
+  /// to stop playback when the tab isn't visible or the user taps to pause.
+  final bool paused;
   final BoxFit fit;
 
   @override
@@ -37,10 +42,19 @@ class KliqVideoState extends State<KliqVideo> {
   @override
   void initState() {
     super.initState();
-    player.open(Media(Api.instance.mediaUrl(widget.url)), play: widget.autoPlay);
+    player.open(Media(Api.instance.mediaUrl(widget.url)),
+        play: widget.autoPlay && !widget.paused);
     player.setPlaylistMode(
         widget.loop ? PlaylistMode.single : PlaylistMode.none);
     if (widget.muted) player.setVolume(0);
+  }
+
+  @override
+  void didUpdateWidget(KliqVideo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.paused != oldWidget.paused) {
+      widget.paused ? player.pause() : player.play();
+    }
   }
 
   @override

@@ -13,6 +13,9 @@ final authRoutes = <RouteBase>[
       path: '/forgot-password',
       builder: (c, s) => const ForgotPasswordPage()),
   GoRoute(
+      path: '/forgot-password/sent',
+      builder: (c, s) => ResetLinkSentPage(email: s.extra as String?)),
+  GoRoute(
     path: '/reset-password',
     builder: (c, s) =>
         ResetPasswordPage(token: s.uri.queryParameters['token']),
