@@ -19,8 +19,18 @@ class Session extends ChangeNotifier {
   String get userId => user?['id'] as String? ?? '';
   String get username => user?['username'] as String? ?? '';
 
+  /// Shared Google client. On web the rendered Google button drives this and
+  /// completion arrives via [onCurrentUserChanged]; on mobile [googleSignIn]
+  /// calls signIn() directly.
+  final googleClient = GoogleSignIn(scopes: const ['email', 'profile']);
+  bool _googleListening = false;
+
+  /// Last Google error (surfaced on web, where sign-in completes async).
+  String? googleError;
+
   /// Called on cold start: boot real backends and restore any stored session.
   Future<void> boot() async {
+    _initGoogleListener();
     // Real backends — initialised here and nowhere else.
     await FirebaseService.instance.init();
     await SupabaseService.instance.init();
@@ -52,15 +62,37 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sign in / sign up with Google. Requires a Google OAuth Client ID to be
-  /// configured (see GOOGLE_SIGNIN_SETUP.md) — until then [GoogleSignIn.signIn]
-  /// throws and the UI shows a friendly message.
-  ///
-  /// Flow: google_sign_in returns an ID token → POST /auth/google → the server
-  /// verifies the token, finds-or-creates the user, and returns our own JWT.
+  /// Web: the rendered Google button fires [onCurrentUserChanged]; complete the
+  /// sign-in from there. On mobile this listener is harmless.
+  void _initGoogleListener() {
+    if (_googleListening) return;
+    _googleListening = true;
+    googleClient.onCurrentUserChanged.listen((account) async {
+      if (account == null || isAuthed) return;
+      try {
+        await _completeGoogle(account);
+      } catch (e) {
+        googleError = e.toString();
+        notifyListeners();
+      }
+    });
+    if (kIsWeb) {
+      // Primes the button / One Tap without forcing a popup.
+      googleClient.signInSilently();
+    }
+  }
+
+  /// Mobile: run the native Google picker. On web the rendered button handles
+  /// this, so [googleSignIn] is a no-op there.
   Future<void> googleSignIn() async {
-    final account = await GoogleSignIn(scopes: const ['email', 'profile']).signIn();
+    if (kIsWeb) return;
+    final account = await googleClient.signIn();
     if (account == null) return; // user cancelled the picker
+    await _completeGoogle(account);
+  }
+
+  /// Exchange a Google account's ID token for our own JWT (find-or-create).
+  Future<void> _completeGoogle(GoogleSignInAccount account) async {
     final auth = await account.authentication;
     final idToken = auth.idToken;
     if (idToken == null) {
@@ -69,6 +101,7 @@ class Session extends ChangeNotifier {
     final res = await Api.instance.post('/auth/google', body: {'idToken': idToken});
     await Api.instance.setToken(res['token'] as String?);
     user = (res['user'] as Map?)?.cast<String, dynamic>();
+    googleError = null;
     WsService.instance.connect();
     _registerFcmToken();
     notifyListeners();

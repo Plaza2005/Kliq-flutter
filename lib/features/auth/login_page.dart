@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
 import 'auth_scaffold.dart';
+import 'google_signin_button.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -80,10 +81,10 @@ class _LoginPageState extends State<LoginPage> {
           obscure: true,
           autofillHints: const [AutofillHints.password],
         ),
-        AuthError(_error),
+        AuthError(_error ?? context.watch<Session>().googleError),
         AuthButton(label: 'Sign In', busy: _busy, onPressed: _submit),
         const AuthDivider(),
-        GoogleButton(busy: _googleBusy, onPressed: _google),
+        googleSignInButton(onPressed: _google, busy: _googleBusy),
         const SizedBox(height: 4),
         TextButton(
           onPressed: () => context.push('/forgot-password'),

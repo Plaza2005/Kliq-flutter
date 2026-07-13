@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
 import 'auth_scaffold.dart';
+import 'google_signin_button.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -93,10 +94,10 @@ class _RegisterPageState extends State<RegisterPage> {
         AuthField(controller: _password, hint: 'Password', obscure: true),
         AuthField(
             controller: _confirm, hint: 'Confirm password', obscure: true),
-        AuthError(_error),
+        AuthError(_error ?? context.watch<Session>().googleError),
         AuthButton(label: 'Create Account', busy: _busy, onPressed: _submit),
         const AuthDivider(),
-        GoogleButton(busy: _googleBusy, onPressed: _google),
+        googleSignInButton(onPressed: _google, busy: _googleBusy),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
