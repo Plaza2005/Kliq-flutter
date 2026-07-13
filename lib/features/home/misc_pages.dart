@@ -171,8 +171,10 @@ class _SavedPostsPageState extends State<SavedPostsPage> {
                   subtitle: 'Tap the bookmark icon on any post to save it')
               : ListView.builder(
                   itemCount: _posts.length,
-                  itemBuilder: (context, i) =>
-                      PostCard(post: _posts[i], gradientSeed: i),
+                  itemBuilder: (context, i) => PostCard(
+                      post: _posts[i],
+                      gradientSeed: i,
+                      onChanged: _load),
                 ),
     );
   }

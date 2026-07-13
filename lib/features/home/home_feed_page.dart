@@ -236,7 +236,10 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                         )
                       : const SizedBox(height: 40);
                 }
-                return PostCard(post: _posts[i], gradientSeed: i);
+                return PostCard(
+                    post: _posts[i],
+                    gradientSeed: i,
+                    onChanged: () => _load(reset: true));
               },
             ),
         ],

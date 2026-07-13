@@ -1,8 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/api_client.dart';
+import '../../../core/session.dart';
 import '../../../core/theme.dart';
 import '../feed_models.dart';
 import 'caption_text.dart';
@@ -19,10 +21,15 @@ const _textCardGradients = [
 /// Instagram-style feed post card: header, media/carousel or text body,
 /// action row (like/comment/share/save), caption and timestamp.
 class PostCard extends StatefulWidget {
-  const PostCard({super.key, required this.post, this.gradientSeed = 0});
+  const PostCard(
+      {super.key, required this.post, this.gradientSeed = 0, this.onChanged});
 
   final Post post;
   final int gradientSeed;
+
+  /// Called after the viewer edits or deletes their own post, so the host
+  /// (feed/profile) can refresh.
+  final VoidCallback? onChanged;
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -226,10 +233,99 @@ class _PostCardState extends State<PostCard> {
                 context.push('/user/${post.author.username}');
               },
             ),
+            if (_isOwnPost(context)) ...[
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined,
+                    color: KliqColors.textPrimary),
+                title: const Text('Edit caption'),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _editPost(context);
+                },
+              ),
+              ListTile(
+                leading:
+                    const Icon(Icons.delete_outline, color: KliqColors.danger),
+                title: const Text('Delete post',
+                    style: TextStyle(color: KliqColors.danger)),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _deletePost(context);
+                },
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  bool _isOwnPost(BuildContext context) =>
+      context.read<Session>().username == post.author.username;
+
+  Future<void> _editPost(BuildContext context) async {
+    final controller = TextEditingController(text: post.body);
+    final messenger = ScaffoldMessenger.of(context);
+    final newBody = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KliqColors.surfaceElevated,
+        title: const Text('Edit caption'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 5,
+          minLines: 1,
+          decoration: const InputDecoration(hintText: 'Write a caption…'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Save')),
+        ],
+      ),
+    );
+    if (newBody == null) return;
+    try {
+      await Api.instance.patch('/posts/${post.id}', body: {'body': newBody});
+      messenger.showSnackBar(const SnackBar(content: Text('Post updated')));
+      widget.onChanged?.call();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not update: $e')));
+    }
+  }
+
+  Future<void> _deletePost(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KliqColors.surfaceElevated,
+        title: const Text('Delete post?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete',
+                  style: TextStyle(color: KliqColors.danger))),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await Api.instance.delete('/posts/${post.id}');
+      messenger.showSnackBar(const SnackBar(content: Text('Post deleted')));
+      widget.onChanged?.call();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not delete: $e')));
+    }
   }
 
   Widget _media(BuildContext context) {

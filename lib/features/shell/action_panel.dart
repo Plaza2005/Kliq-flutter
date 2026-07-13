@@ -62,15 +62,9 @@ class _ActionPanel extends StatelessWidget {
   // branch (context.go); the rest stack on top (context.push).
   static const _items = [
     (icon: Icons.person_outline, label: 'My Profile', path: '/profile', color: KliqColors.purple, tab: true),
-    (icon: Icons.search, label: 'Search', path: '/search', color: KliqColors.cyan, tab: false),
     (icon: Icons.explore_outlined, label: 'Explore', path: '/explore', color: Color(0xFF60A5FA), tab: true),
     (icon: Icons.movie_creation_outlined, label: 'Reels', path: '/reels', color: KliqColors.pink, tab: true),
-    (icon: Icons.live_tv_outlined, label: 'Live', path: '/live', color: KliqColors.live, tab: false),
-    (icon: Icons.videocam_outlined, label: 'Go Live', path: '/go-live', color: Color(0xFFF87171), tab: false),
-    (icon: Icons.send_outlined, label: 'Messages', path: '/inbox', color: KliqColors.cyan, tab: false),
-    (icon: Icons.notifications_none, label: 'Notifications', path: '/notifications', color: KliqColors.warning, tab: false),
     (icon: Icons.bookmark_border, label: 'Saved', path: '/saved', color: KliqColors.purple, tab: false),
-    (icon: Icons.people_outline, label: 'Friends', path: '/friends', color: KliqColors.success, tab: false),
     (icon: Icons.settings_outlined, label: 'Settings & Privacy', path: '/settings', color: KliqColors.textSecondary, tab: false),
   ];
 

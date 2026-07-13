@@ -44,12 +44,37 @@ class _InboxPageState extends State<InboxPage> {
     }
   }
 
+  /// Opens a searchable people picker; selecting someone opens a chat with them
+  /// (ChatPage resolves a userId into a get-or-create thread, same as profiles).
+  Future<void> _startChat() async {
+    final userId = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: KliqColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const _StartChatSheet(),
+    );
+    if (userId != null && mounted) {
+      await context.push('/chat/$userId');
+      _load(); // refresh the inbox when returning
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title:
             const Text('Inbox', style: TextStyle(fontWeight: FontWeight.w800)),
+        actions: [
+          IconButton(
+            tooltip: 'Start a chat',
+            icon: const Icon(Icons.edit_square),
+            onPressed: _startChat,
+          ),
+        ],
       ),
       body: _loading
           ? const CenterSpinner()
@@ -114,6 +139,125 @@ class _InboxPageState extends State<InboxPage> {
                     },
                   ),
                 ),
+    );
+  }
+}
+
+/// Bottom sheet that searches app users and returns the picked user's id.
+class _StartChatSheet extends StatefulWidget {
+  const _StartChatSheet();
+
+  @override
+  State<_StartChatSheet> createState() => _StartChatSheetState();
+}
+
+class _StartChatSheetState extends State<_StartChatSheet> {
+  final _query = TextEditingController();
+  Timer? _debounce;
+  List<Map<String, dynamic>> _results = [];
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _query.dispose();
+    super.dispose();
+  }
+
+  void _onChanged(String q) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () => _search(q.trim()));
+  }
+
+  Future<void> _search(String q) async {
+    if (q.isEmpty) {
+      setState(() {
+        _results = [];
+        _loading = false;
+      });
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final data = await Api.instance.get('/users/search', query: {'q': q});
+      if (!mounted) return;
+      setState(() {
+        _results = asMapList(data, key: 'users');
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: KliqColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: TextField(
+                controller: _query,
+                autofocus: true,
+                onChanged: _onChanged,
+                decoration: const InputDecoration(
+                  hintText: 'Search people to message',
+                  prefixIcon: Icon(Icons.search),
+                ),
+              ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const CenterSpinner()
+                  : _results.isEmpty
+                      ? Center(
+                          child: Text(
+                            _query.text.trim().isEmpty
+                                ? 'Search for someone to start a chat'
+                                : 'No people found',
+                            style: const TextStyle(
+                                color: KliqColors.textMuted),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _results.length,
+                          itemBuilder: (context, i) {
+                            final u = _results[i];
+                            return ListTile(
+                              leading: KliqAvatar(
+                                  u['avatarUrl']?.toString(),
+                                  radius: 20),
+                              title: Text(
+                                  pickStr(u, ['displayName', 'username']),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
+                              subtitle: Text('@${u['username'] ?? ''}',
+                                  style: const TextStyle(
+                                      color: KliqColors.textMuted,
+                                      fontSize: 12)),
+                              onTap: () => Navigator.of(context)
+                                  .pop(u['id']?.toString()),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
