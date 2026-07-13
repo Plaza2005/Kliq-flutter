@@ -22,6 +22,8 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic>? _user;
   List<Post> _posts = [];
+  List<Post> _reels = [];
+  List<Post> _reposts = [];
   bool _loading = true;
   bool _following = false;
   String? _error;
@@ -46,15 +48,19 @@ class _ProfilePageState extends State<ProfilePage> {
           ? await Api.instance.get('/auth/me')
           : await Api.instance.get('/users/$key');
       final user = asMap(data);
-      final id = user['id']?.toString() ?? key;
-      List<Post> posts = [];
-      try {
-        posts = parsePostList(await Api.instance.get('/users/$id/posts'));
-      } catch (_) {}
+      // The user content endpoints key on USERNAME, not id.
+      final uname = user['username']?.toString() ?? '';
+      final lists = await Future.wait([
+        _fetchList('/users/$uname/posts', query: {'type': 'post'}),
+        _fetchList('/users/$uname/posts', query: {'type': 'reel'}),
+        _fetchList('/users/$uname/reposts'),
+      ]);
       if (!mounted) return;
       setState(() {
         _user = user;
-        _posts = posts;
+        _posts = lists[0];
+        _reels = lists[1];
+        _reposts = lists[2];
         _following = user['isFollowing'] == true;
         _loading = false;
       });
@@ -64,6 +70,15 @@ class _ProfilePageState extends State<ProfilePage> {
         _loading = false;
         _error = e.toString();
       });
+    }
+  }
+
+  Future<List<Post>> _fetchList(String path,
+      {Map<String, dynamic>? query}) async {
+    try {
+      return parsePostList(await Api.instance.get(path, query: query));
+    } catch (_) {
+      return [];
     }
   }
 
@@ -124,15 +139,38 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         ],
       ),
-      body: RefreshIndicator(
-        color: KliqColors.cyan,
-        onRefresh: _load,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(child: _header(u)),
-            _grid(),
-          ],
+      body: DefaultTabController(
+        length: 3,
+        child: RefreshIndicator(
+          color: KliqColors.cyan,
+          onRefresh: _load,
+          child: NestedScrollView(
+            headerSliverBuilder: (context, _) => [
+              SliverToBoxAdapter(child: _header(u)),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _TabBarHeader(
+                  const TabBar(
+                    indicatorColor: KliqColors.textPrimary,
+                    labelColor: KliqColors.textPrimary,
+                    unselectedLabelColor: KliqColors.textMuted,
+                    tabs: [
+                      Tab(icon: Icon(Icons.grid_on_outlined, size: 20)),
+                      Tab(icon: Icon(Icons.movie_creation_outlined, size: 20)),
+                      Tab(icon: Icon(Icons.repeat, size: 20)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            body: TabBarView(
+              children: [
+                _grid(_posts, 'No posts yet'),
+                _grid(_reels, 'No reels yet'),
+                _grid(_reposts, 'No reposts yet'),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -254,44 +292,83 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _grid() {
-    if (_posts.isEmpty) {
-      return const SliverFillRemaining(
-        hasScrollBody: false,
-        child: EmptyState(
-            icon: Icons.grid_on_outlined,
-            title: 'No posts yet',
-            subtitle: 'Content will appear here'),
-      );
-    }
-    return SliverPadding(
-      padding: const EdgeInsets.all(1),
-      sliver: SliverGrid.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 2,
-          crossAxisSpacing: 2,
-        ),
-        itemCount: _posts.length,
-        itemBuilder: (context, i) {
-          final p = _posts[i];
-          return GestureDetector(
-            onTap: () => context.push('/post/${p.id}'),
-            child: p.isText
-                ? Container(
-                    color: KliqColors.surfaceElevated,
-                    padding: const EdgeInsets.all(8),
-                    child: Text(
-                      p.body,
-                      maxLines: 5,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                  )
-                : NetImg(p.mediaUrls.first),
-          );
-        },
-      ),
+  Widget _grid(List<Post> posts, String emptyLabel) {
+    return CustomScrollView(
+      key: PageStorageKey(emptyLabel),
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        if (posts.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: EmptyState(
+              icon: Icons.grid_on_outlined,
+              title: emptyLabel,
+              subtitle: 'Content will appear here',
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.all(1),
+            sliver: SliverGrid.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 2,
+                crossAxisSpacing: 2,
+              ),
+              itemCount: posts.length,
+              itemBuilder: (context, i) {
+                final p = posts[i];
+                return GestureDetector(
+                  onTap: () => context.push('/post/${p.id}'),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      p.isText
+                          ? Container(
+                              color: KliqColors.surfaceElevated,
+                              padding: const EdgeInsets.all(8),
+                              child: Text(
+                                p.body,
+                                maxLines: 5,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            )
+                          : NetImg(p.mediaUrls.isNotEmpty ? p.mediaUrls.first : ''),
+                      if (!p.isText && p.mediaType == 'video')
+                        const Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Icon(Icons.play_arrow,
+                              size: 18, color: Colors.white),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
+}
+
+/// Pinned tab bar between the profile header and the content grids.
+class _TabBarHeader extends SliverPersistentHeaderDelegate {
+  _TabBarHeader(this.tabBar);
+  final TabBar tabBar;
+
+  @override
+  Widget build(
+          BuildContext context, double shrinkOffset, bool overlapsContent) =>
+      ColoredBox(color: KliqColors.background, child: tabBar);
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  bool shouldRebuild(_TabBarHeader oldDelegate) => false;
 }
