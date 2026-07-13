@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,6 +27,11 @@ class _ReelsPageState extends State<ReelsPage> {
   String? _error;
   int _current = 0;
 
+  // ── View / completion tracking (feeds the TikTok completion-rate signal) ──
+  Timer? _completeTimer;
+  final _viewed = <String>{};
+  final _completed = <String>{};
+
   /// for_you | following | live
   String _tab = 'for_you';
 
@@ -38,8 +45,26 @@ class _ReelsPageState extends State<ReelsPage> {
   @override
   void dispose() {
     dataEpoch.removeListener(_onDataEpoch);
+    _completeTimer?.cancel();
     _pager.dispose();
     super.dispose();
+  }
+
+  /// Report a view for the active reel, and — if the viewer lingers ~3s —
+  /// a completed view. Completion rate is the dominant ranking signal.
+  void _trackActive(int index) {
+    _completeTimer?.cancel();
+    if (index < 0 || index >= _reels.length) return;
+    final id = _reels[index]['id']?.toString();
+    if (id == null) return;
+    if (_viewed.add(id)) {
+      Api.instance.post('/posts/$id/view').catchError((_) => null);
+    }
+    _completeTimer = Timer(const Duration(seconds: 3), () {
+      if (_completed.add(id)) {
+        Api.instance.post('/posts/$id/complete').catchError((_) => null);
+      }
+    });
   }
 
   void _onDataEpoch() {
@@ -73,6 +98,7 @@ class _ReelsPageState extends State<ReelsPage> {
         _reels = reels;
         _loading = false;
       });
+      if (_reels.isNotEmpty) _trackActive(_current);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -126,7 +152,10 @@ class _ReelsPageState extends State<ReelsPage> {
       controller: _pager,
       scrollDirection: Axis.vertical,
       itemCount: _reels.length,
-      onPageChanged: (i) => setState(() => _current = i),
+      onPageChanged: (i) {
+        setState(() => _current = i);
+        _trackActive(i);
+      },
       itemBuilder: (context, i) => _ReelItem(
         key: ValueKey(_reels[i]['id']),
         reel: _reels[i],
