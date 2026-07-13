@@ -1,8 +1,8 @@
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
@@ -108,6 +108,7 @@ class _CreatePageState extends State<CreatePage> with WidgetsBindingObserver {
   bool _busy = false;
   bool _initializing = true;
   bool _recording = false;
+  String? _camError;
   String _mode = 'POST'; // POST | STORY | REEL | LIVE
 
   static const _modes = ['POST', 'STORY', 'REEL', 'LIVE'];
@@ -128,6 +129,9 @@ class _CreatePageState extends State<CreatePage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Web fires inactive/resumed unreliably (permission prompts, focus changes)
+    // which would tear down a working preview — keep the camera alive there.
+    if (kIsWeb) return;
     final cam = _camera;
     if (cam == null || !cam.value.isInitialized) return;
     if (state == AppLifecycleState.inactive) {
@@ -139,24 +143,34 @@ class _CreatePageState extends State<CreatePage> with WidgetsBindingObserver {
   }
 
   Future<void> _initCamera() async {
-    setState(() => _initializing = true);
+    setState(() {
+      _initializing = true;
+      _camError = null;
+    });
     try {
       _cameras = await availableCameras();
-      if (_cameras.isEmpty) throw Exception('No cameras');
+      if (_cameras.isEmpty) throw Exception('No cameras found');
       _cameraIndex =
           _cameras.indexWhere((c) => c.lensDirection == CameraLensDirection.back);
       if (_cameraIndex < 0) _cameraIndex = 0;
       await _startController();
-    } catch (_) {
-      if (mounted) setState(() => _initializing = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _initializing = false;
+          _camError = '$e';
+        });
+      }
     }
   }
 
   Future<void> _startController() async {
     final controller = CameraController(
       _cameras[_cameraIndex],
-      ResolutionPreset.high,
-      enableAudio: true,
+      // Web is happier at a modest resolution; audio (mic) off on web to avoid
+      // an extra permission that can fail and abort camera init.
+      kIsWeb ? ResolutionPreset.medium : ResolutionPreset.high,
+      enableAudio: !kIsWeb,
     );
     await controller.initialize();
     if (!mounted) {
@@ -166,6 +180,7 @@ class _CreatePageState extends State<CreatePage> with WidgetsBindingObserver {
     setState(() {
       _camera = controller;
       _initializing = false;
+      _camError = null;
     });
   }
 
@@ -177,8 +192,13 @@ class _CreatePageState extends State<CreatePage> with WidgetsBindingObserver {
     setState(() => _initializing = true);
     try {
       await _startController();
-    } catch (_) {
-      if (mounted) setState(() => _initializing = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _initializing = false;
+          _camError = '$e';
+        });
+      }
     }
   }
 
@@ -372,15 +392,30 @@ class _CreatePageState extends State<CreatePage> with WidgetsBindingObserver {
         alignment: Alignment.center,
         child: _initializing
             ? const CircularProgressIndicator(color: KliqColors.cyan)
-            : const Column(
+            : Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.photo_library_outlined,
+                  const Icon(Icons.photo_library_outlined,
                       size: 44, color: Colors.white70),
-                  SizedBox(height: 10),
-                  Text('Camera unavailable\nTap to pick from gallery',
+                  const SizedBox(height: 10),
+                  const Text('Camera unavailable\nTap to pick from gallery',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.white70)),
+                  if (_camError != null) ...[
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Text(_camError!,
+                          textAlign: TextAlign.center,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Colors.white38, fontSize: 11)),
+                    ),
+                    TextButton(
+                        onPressed: _initCamera,
+                        child: const Text('Retry camera')),
+                  ],
                 ],
               ),
       ),
