@@ -20,6 +20,9 @@ final authRoutes = <RouteBase>[
     builder: (c, s) =>
         ResetPasswordPage(token: s.uri.queryParameters['token']),
   ),
+  GoRoute(
+      path: '/reset-password/done',
+      builder: (c, s) => const PasswordResetSuccessPage()),
   GoRoute(path: '/verify-email', builder: (c, s) => const VerifyEmailPage()),
   GoRoute(path: '/onboarding', builder: (c, s) => const OnboardingPage()),
 ];

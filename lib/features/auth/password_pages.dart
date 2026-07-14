@@ -140,9 +140,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       await Api.instance.post('/auth/reset-password',
           body: {'token': _token.text.trim(), 'password': _password.text});
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Password updated — sign in with your new password')));
-      context.go('/login');
+      context.go('/reset-password/done');
     } catch (e) {
       setState(() {
         _busy = false;
@@ -163,6 +161,30 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             controller: _confirm, hint: 'Confirm new password', obscure: true),
         AuthError(_error),
         AuthButton(label: 'Update Password', busy: _busy, onPressed: _submit),
+      ],
+    );
+  }
+}
+
+/// Separate success page shown after a password is reset via the email link.
+class PasswordResetSuccessPage extends StatelessWidget {
+  const PasswordResetSuccessPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthScaffold(
+      title: 'Password updated',
+      children: [
+        const Icon(Icons.check_circle_outline,
+            size: 56, color: KliqColors.success),
+        const SizedBox(height: 18),
+        const Text(
+          'Your password has been changed. Sign in with your new password.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: KliqColors.textSecondary),
+        ),
+        const SizedBox(height: 24),
+        AuthButton(label: 'Sign In', onPressed: () => context.go('/login')),
       ],
     );
   }
