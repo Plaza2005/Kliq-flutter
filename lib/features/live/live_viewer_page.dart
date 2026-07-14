@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -31,6 +31,8 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
   bool _loading = true;
   Uint8List? _frame;
   bool _receivingVideo = false;
+  bool _subscribed = false;
+  bool _loggedFirstFrame = false;
   int _viewers = 0;
   final _chat = <LiveChatMessage>[];
   final _bursts = <Widget>[];
@@ -58,6 +60,7 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
     WsService.instance.connect();
     _wsSub = WsService.instance.events.listen(_onWsEvent);
     WsService.instance.subscribeToStream(widget.streamId);
+    _subscribed = true;
     WakelockPlus.enable();
     if (mounted) setState(() => _loading = false);
 
@@ -91,12 +94,18 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
         if (chunk is String && chunk.isNotEmpty) {
           try {
             final bytes = base64Decode(chunk);
+            if (!_loggedFirstFrame) {
+              _loggedFirstFrame = true;
+              debugPrint(
+                  '[viewer] first live:chunk received for ${widget.streamId} (${chunk.length} b64 chars)');
+            }
             setState(() {
               _frame = bytes;
               _receivingVideo = true;
             });
-          } catch (_) {
+          } catch (err) {
             // Non-JPEG chunk (e.g. a webm broadcaster) — keep the poster.
+            debugPrint('[viewer] live:chunk decode failed: $err');
           }
         }
       case 'live:chat':
@@ -170,15 +179,18 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
                       Container(
                           color: Colors.black.withValues(alpha: 0.35)),
                       if (!_receivingVideo)
-                        const Center(
+                        Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              CircularProgressIndicator(
+                              const CircularProgressIndicator(
                                   color: KliqColors.cyan),
-                              SizedBox(height: 12),
-                              Text('Connecting to stream…',
-                                  style: TextStyle(
+                              const SizedBox(height: 12),
+                              Text(
+                                  _subscribed
+                                      ? 'Waiting for video…'
+                                      : 'Connecting to stream…',
+                                  style: const TextStyle(
                                       color:
                                           KliqColors.textSecondary)),
                             ],
