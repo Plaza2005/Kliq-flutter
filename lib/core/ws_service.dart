@@ -34,12 +34,19 @@ class WsService {
   final _events = StreamController<Map<String, dynamic>>.broadcast();
   Timer? _reconnectTimer;
   bool _shouldRun = false;
+  final Set<String> _streamSubs = {};
+
+  static const _minReconnectMs = 500;
+  static const _maxReconnectMs = 5000;
+  int _reconnectDelayMs = _minReconnectMs;
 
   Stream<Map<String, dynamic>> get events => _events.stream;
   bool get isConnected => _channel != null;
 
   void connect() {
     _shouldRun = true;
+    _reconnectDelayMs = _minReconnectMs;
+    if (_channel != null) return;
     final token = Api.instance.token;
     if (token == null) return;
     _open(token);
@@ -53,6 +60,7 @@ class WsService {
       _sub = _channel!.stream.listen(
         (raw) {
           try {
+            _reconnectDelayMs = _minReconnectMs;
             final msg = jsonDecode(raw as String);
             if (msg is Map<String, dynamic>) {
               _events.add(msg);
@@ -65,6 +73,9 @@ class WsService {
         onDone: _scheduleReconnect,
         onError: (_) => _scheduleReconnect(),
       );
+      for (final streamId in _streamSubs) {
+        send({'type': 'stream:subscribe', 'streamId': streamId});
+      }
       debugPrint('[ws] connected');
     } catch (e) {
       debugPrint('[ws] connect failed: $e');
@@ -78,7 +89,9 @@ class WsService {
     _sub = null;
     if (!_shouldRun) return;
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 3), () {
+    final delay = _reconnectDelayMs;
+    _reconnectDelayMs = (_reconnectDelayMs * 2).clamp(_minReconnectMs, _maxReconnectMs);
+    _reconnectTimer = Timer(Duration(milliseconds: delay), () {
       final token = Api.instance.token;
       if (_shouldRun && token != null) _open(token);
     });
@@ -88,11 +101,15 @@ class WsService {
     _channel?.sink.add(jsonEncode(message));
   }
 
-  void subscribeToStream(String streamId) =>
-      send({'type': 'stream:subscribe', 'streamId': streamId});
+  void subscribeToStream(String streamId) {
+    _streamSubs.add(streamId);
+    send({'type': 'stream:subscribe', 'streamId': streamId});
+  }
 
-  void unsubscribeFromStream(String streamId) =>
-      send({'type': 'stream:unsubscribe', 'streamId': streamId});
+  void unsubscribeFromStream(String streamId) {
+    _streamSubs.remove(streamId);
+    send({'type': 'stream:unsubscribe', 'streamId': streamId});
+  }
 
   void sendStreamChunk(String streamId, String chunkBase64) =>
       send({'type': 'stream:chunk', 'streamId': streamId, 'chunk': chunkBase64});

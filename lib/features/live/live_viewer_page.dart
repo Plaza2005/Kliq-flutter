@@ -53,17 +53,25 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
   }
 
   Future<void> _join() async {
-    try {
-      // Stream metadata comes from the live list.
-      final streams = await Api.instance.get('/live/streams');
-      final list = asMapList(streams, key: 'streams');
-      _stream = list.where((x) => x['id'] == widget.streamId).firstOrNull;
-      _viewers = pickInt(_stream ?? {}, ['viewerCount']);
-    } catch (_) {}
-
+    // Subscribe first so the cached/live frame starts flowing immediately;
+    // metadata and the view-count POST happen in parallel, not blocking it.
     WsService.instance.connect();
     _wsSub = WsService.instance.events.listen(_onWsEvent);
     WsService.instance.subscribeToStream(widget.streamId);
+    WakelockPlus.enable();
+    if (mounted) setState(() => _loading = false);
+
+    // Stream metadata comes from the live list.
+    Api.instance.get('/live/streams').then((streams) {
+      if (!mounted) return;
+      final list = asMapList(streams, key: 'streams');
+      final stream = list.where((x) => x['id'] == widget.streamId).firstOrNull;
+      setState(() {
+        _stream = stream;
+        _viewers = pickInt(_stream ?? {}, ['viewerCount']);
+      });
+    }).catchError((_) => null);
+
     Api.instance
         .post('/live/${widget.streamId}/view')
         .then((r) {
@@ -73,8 +81,6 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
           }
         })
         .catchError((_) => null);
-    WakelockPlus.enable();
-    if (mounted) setState(() => _loading = false);
   }
 
   void _onWsEvent(Map<String, dynamic> e) {
