@@ -220,6 +220,18 @@ class _StartChatSheetState extends State<_StartChatSheet> {
                 ),
               ),
             ),
+            ListTile(
+              leading: const Icon(Icons.contacts_outlined,
+                  color: KliqColors.cyan),
+              title: const Text('Find contacts'),
+              subtitle: const Text('See which friends are already on KLIQ',
+                  style: TextStyle(fontSize: 12)),
+              onTap: () {
+                Navigator.of(context).pop();
+                context.push('/contacts');
+              },
+            ),
+            const Divider(height: 1),
             Expanded(
               child: _loading
                   ? const CenterSpinner()

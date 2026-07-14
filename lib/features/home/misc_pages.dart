@@ -253,12 +253,34 @@ class _FriendsPageState extends State<FriendsPage> {
             ],
           ),
         ),
-        body: _loading
-            ? const CenterSpinner()
-            : TabBarView(children: [
-                _list(_followers, 'No followers yet'),
-                _list(_following, 'Not following anyone yet'),
-              ]),
+        body: Column(
+          children: [
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: KliqColors.surfaceElevated,
+                child:
+                    Icon(Icons.contacts_outlined, color: KliqColors.cyan),
+              ),
+              title: const Text('Find contacts',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('See which friends are already on KLIQ',
+                  style: TextStyle(
+                      color: KliqColors.textMuted, fontSize: 12)),
+              trailing:
+                  const Icon(Icons.chevron_right, color: KliqColors.textMuted),
+              onTap: () => context.push('/contacts'),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: _loading
+                  ? const CenterSpinner()
+                  : TabBarView(children: [
+                      _list(_followers, 'No followers yet'),
+                      _list(_following, 'Not following anyone yet'),
+                    ]),
+            ),
+          ],
+        ),
       ),
     );
   }

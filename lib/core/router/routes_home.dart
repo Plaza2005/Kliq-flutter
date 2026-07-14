@@ -5,6 +5,7 @@ import '../../features/home/post_detail_page.dart';
 import '../../features/home/story_viewer_page.dart';
 import '../../features/profile/edit_profile_page.dart';
 import '../../features/profile/profile_page.dart';
+import '../../features/social/contacts_page.dart';
 
 /// Feed, stories, posts, profile and social-graph surfaces.
 final homeRoutes = <RouteBase>[
@@ -30,6 +31,7 @@ final homeRoutes = <RouteBase>[
     builder: (c, s) => const EditProfilePage(),
   ),
   GoRoute(path: '/friends', builder: (c, s) => const FriendsPage()),
+  GoRoute(path: '/contacts', builder: (c, s) => const ContactsPage()),
   GoRoute(path: '/saved', builder: (c, s) => const SavedPostsPage()),
   GoRoute(
       path: '/notifications', builder: (c, s) => const NotificationsPage()),

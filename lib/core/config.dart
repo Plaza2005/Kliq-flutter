@@ -2,6 +2,10 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 
+/// Link shared by the contacts-invite flow (SMS/email/WhatsApp/share sheet).
+// TODO: set real store link
+const kInviteUrl = 'https://kliq.app';
+
 /// Central configuration for backends.
 ///
 /// Values can be overridden at build time:

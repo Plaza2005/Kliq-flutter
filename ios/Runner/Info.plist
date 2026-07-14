@@ -72,6 +72,8 @@
 	<string>KLIQ uses the microphone for live streaming and video recording.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>KLIQ needs photo library access so you can upload media.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>KLIQ uses your contacts to help you find friends who are already on KLIQ.</string>
 </dict>
 </plist>
 
