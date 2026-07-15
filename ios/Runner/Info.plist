@@ -67,9 +67,9 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>KLIQ uses the camera for live streaming, reels and photo posts.</string>
+	<string>KLIQ uses the camera for live streaming, reels, photo posts, and video calls.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>KLIQ uses the microphone for live streaming and video recording.</string>
+	<string>KLIQ uses the microphone for live streaming, video recording, and voice/video calls.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>KLIQ needs photo library access so you can upload media.</string>
 	<key>NSContactsUsageDescription</key>

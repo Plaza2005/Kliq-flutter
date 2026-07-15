@@ -501,6 +501,40 @@ class _ChatPageState extends State<ChatPage> {
     } catch (_) {}
   }
 
+  /// Starts a 1:1 voice/video call ([type] is 'voice' or 'video'): creates
+  /// the Call row (which also rings the other participant over the
+  /// existing wsHub — see `POST /calls` in routes/calls.ts) then navigates
+  /// straight into `CallPage` in its "calling/ringing" state; the page
+  /// itself joins the Agora channel once a `call:accept` WS event arrives.
+  /// 1:1 only — no group-call button per the plan.
+  Future<void> _startCall(String type) async {
+    if (widget.isGroup) return;
+    final calleeId = widget.isThreadId
+        ? _other['id']?.toString()
+        : widget.conversationId;
+    if (calleeId == null || calleeId.isEmpty) return;
+    try {
+      final res = await Api.instance
+          .post('/calls', body: {'calleeId': calleeId, 'type': type});
+      final data = asMap(res);
+      final callId = data['id']?.toString();
+      final channel = data['channel']?.toString();
+      if (callId == null || channel == null || !mounted) return;
+      context.push('/call/$callId', extra: {
+        'channel': channel,
+        'callType': type,
+        'otherUser': _other,
+        'isCaller': true,
+        'startAccepted': false,
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Could not start call: $e')));
+      }
+    }
+  }
+
   /// Sets the "replying to" quote bar shown above the composer; [message]
   /// is the tapped/long-pressed/swiped bubble's data.
   void _startReply(Map<String, dynamic> message) {
@@ -821,6 +855,20 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ],
         ),
+        actions: widget.isGroup
+            ? null
+            : [
+                IconButton(
+                  tooltip: 'Voice call',
+                  icon: const Icon(Icons.call_outlined),
+                  onPressed: () => _startCall('voice'),
+                ),
+                IconButton(
+                  tooltip: 'Video call',
+                  icon: const Icon(Icons.videocam_outlined),
+                  onPressed: () => _startCall('video'),
+                ),
+              ],
       ),
       body: Column(
         children: [

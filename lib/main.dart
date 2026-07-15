@@ -6,6 +6,7 @@ import 'core/api_client.dart';
 import 'core/router/app_router.dart';
 import 'core/session.dart';
 import 'core/theme.dart';
+import 'features/calls/incoming_call_overlay.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +43,12 @@ class _KliqAppState extends State<KliqApp> {
         debugShowCheckedModeBanner: false,
         theme: buildKliqTheme(),
         routerConfig: router,
+        // Global incoming-call banner: shows on top of whatever screen is
+        // open when a call:invite WS event arrives. Takes `router` directly
+        // (rather than resolving GoRouter.of(context)) since this `context`
+        // sits above the Router in the tree — see incoming_call_overlay.dart.
+        builder: (context, child) =>
+            IncomingCallOverlay(router: router, child: child ?? const SizedBox()),
       ),
     );
   }

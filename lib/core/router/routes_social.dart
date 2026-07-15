@@ -1,11 +1,12 @@
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/password_pages.dart';
+import '../../features/calls/call_page.dart';
 import '../../features/settings/settings_pages.dart';
 import '../../features/social/community_chat_page.dart';
 import '../../features/social/messaging_pages.dart';
 
-/// Direct messaging and settings.
+/// Direct messaging, calls, and settings.
 final socialRoutes = <RouteBase>[
   // ── Messaging ───────────────────────────────────────────────────────────
   GoRoute(path: '/inbox', builder: (c, s) => const InboxPage()),
@@ -18,6 +19,24 @@ final socialRoutes = <RouteBase>[
       conversationId: s.pathParameters['id']!,
       isThreadId: s.uri.queryParameters['type'] == 'thread',
     ),
+  ),
+  // ── Calls (1:1 voice/video — see features/calls/call_page.dart) ─────────
+  // `extra` is set by ChatPage (caller) or IncomingCallOverlay (callee); see
+  // those for the shape: { channel, callType, otherUser, isCaller, startAccepted }.
+  GoRoute(
+    path: '/call/:id',
+    builder: (c, s) {
+      final extra = (s.extra as Map?) ?? const {};
+      final otherUser = extra['otherUser'];
+      return CallPage(
+        callId: s.pathParameters['id']!,
+        channel: extra['channel']?.toString() ?? '',
+        callType: extra['callType']?.toString() ?? 'voice',
+        otherUser: otherUser is Map ? Map<String, dynamic>.from(otherUser) : <String, dynamic>{},
+        isCaller: extra['isCaller'] == true,
+        startAccepted: extra['startAccepted'] == true,
+      );
+    },
   ),
   GoRoute(
     path: '/group/:id',

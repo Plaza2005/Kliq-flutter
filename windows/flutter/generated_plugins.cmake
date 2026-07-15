@@ -3,10 +3,12 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  agora_rtc_engine
   app_links
   emoji_picker_flutter
   file_selector_windows
   firebase_core
+  iris_method_channel
   media_kit_libs_windows_video
   media_kit_video
   record_windows
