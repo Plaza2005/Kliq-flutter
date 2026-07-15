@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/password_pages.dart';
 import '../../features/settings/settings_pages.dart';
+import '../../features/social/community_chat_page.dart';
 import '../../features/social/messaging_pages.dart';
 
 /// Direct messaging and settings.
@@ -10,13 +11,23 @@ final socialRoutes = <RouteBase>[
   GoRoute(path: '/inbox', builder: (c, s) => const InboxPage()),
   GoRoute(
     path: '/chat/:id',
-    builder: (c, s) =>
-        ChatPage(conversationId: s.pathParameters['id']!),
+    // `?type=thread` means the id is an existing DM threadId (from the
+    // inbox list); otherwise it's a userId to resolve/create a thread for
+    // (from a profile or contacts page).
+    builder: (c, s) => ChatPage(
+      conversationId: s.pathParameters['id']!,
+      isThreadId: s.uri.queryParameters['type'] == 'thread',
+    ),
   ),
   GoRoute(
     path: '/group/:id',
     builder: (c, s) => ChatPage(
         conversationId: s.pathParameters['id']!, isGroup: true),
+  ),
+  GoRoute(
+    path: '/community/:id',
+    builder: (c, s) =>
+        CommunityChatPage(communityId: s.pathParameters['id']!),
   ),
   // ── Settings ────────────────────────────────────────────────────────────
   GoRoute(path: '/settings', builder: (c, s) => const SettingsPage()),

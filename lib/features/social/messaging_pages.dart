@@ -8,10 +8,24 @@ import '../../core/api_client.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
 import '../../core/ws_service.dart';
+import '../common/people_picker_sheet.dart';
 import '../discover/discover_common.dart';
 
-/// Direct messaging: inbox of conversations + 1:1 chat (group chat reuses
-/// the same thread widget).
+/// Returns the first thread map matching [test], or null if none match.
+Map<String, dynamic>? _findThread(
+  List<Map<String, dynamic>> threads,
+  bool Function(Map<String, dynamic>) test,
+) {
+  for (final t in threads) {
+    if (test(t)) return t;
+  }
+  return null;
+}
+
+/// Direct messaging: inbox of DM threads + group chats, and a 1:1/group chat
+/// screen. Wired to the real API — GET /messages/threads, GET /groups,
+/// GET/POST /messages/threads/:id, GET/POST /groups/:id/messages,
+/// POST /messages/send.
 
 class InboxPage extends StatefulWidget {
   const InboxPage({super.key});
@@ -30,12 +44,54 @@ class _InboxPageState extends State<InboxPage> {
     _load();
   }
 
+  /// Loads DM threads and group chats and merges them into one
+  /// recency-sorted inbox list.
   Future<void> _load() async {
     try {
-      final data = await Api.instance.get('/messages/conversations');
+      final results = await Future.wait([
+        Api.instance.get('/messages/threads').catchError((_) => []),
+        Api.instance.get('/groups').catchError((_) => []),
+      ]);
+
+      final threads = asMapList(results[0]).map((t) {
+        final other = asMap(t['other']);
+        final last = asMap(t['lastMessage']);
+        return <String, dynamic>{
+          'kind': 'thread',
+          'id': t['threadId'],
+          'title': pickStr(other, ['displayName', 'username'], fallback: 'Chat'),
+          'avatarUrl': other['avatarUrl'],
+          'preview': pickStr(last, ['body']),
+          'sortAt': t['updatedAt']?.toString() ?? '',
+        };
+      });
+
+      final groups = asMapList(results[1]).map((g) {
+        final msgs = asMapList(g['messages']);
+        final last = msgs.isNotEmpty ? msgs.first : <String, dynamic>{};
+        final lastAt = pickStr(last, ['createdAt']);
+        return <String, dynamic>{
+          'kind': 'group',
+          'id': g['id'],
+          'title': pickStr(g, ['name'], fallback: 'Group chat'),
+          'avatarUrl': g['avatarUrl'],
+          'preview': pickStr(last, ['body']),
+          'sortAt': lastAt.isNotEmpty ? lastAt : (g['createdAt']?.toString() ?? ''),
+        };
+      });
+
+      final merged = [...threads, ...groups];
+      merged.sort((a, b) {
+        final da = DateTime.tryParse(a['sortAt']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final db = DateTime.tryParse(b['sortAt']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        return db.compareTo(da);
+      });
+
       if (mounted) {
         setState(() {
-          _conversations = asMapList(data, key: 'conversations');
+          _conversations = merged;
           _loading = false;
         });
       }
@@ -44,22 +100,105 @@ class _InboxPageState extends State<InboxPage> {
     }
   }
 
-  /// Opens a searchable people picker; selecting someone opens a chat with them
-  /// (ChatPage resolves a userId into a get-or-create thread, same as profiles).
+  /// Opens the shared multi-select people picker. Exactly one person picked
+  /// -> normal 1:1 chat; more than one -> create a group; "Create a
+  /// community" -> create a community and open its chat.
   Future<void> _startChat() async {
-    final userId = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: KliqColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const _StartChatSheet(),
-    );
-    if (userId != null && mounted) {
-      await context.push('/chat/$userId');
-      _load(); // refresh the inbox when returning
+    final result = await showPeoplePickerSheet(context,
+        title: 'New message', confirmLabel: 'Chat');
+    if (result == null || !mounted) return;
+
+    if (result.createCommunity) {
+      await _createCommunity();
+    } else if (result.users.length == 1) {
+      final userId = result.users.first['id']?.toString();
+      if (userId != null && userId.isNotEmpty) {
+        await context.push('/chat/$userId');
+        _load();
+      }
+    } else if (result.users.length > 1) {
+      await _createGroup(result.users);
     }
+  }
+
+  Future<void> _createGroup(List<Map<String, dynamic>> users) async {
+    final defaultName =
+        users.map((u) => pickStr(u, ['displayName', 'username'])).join(', ');
+    final name = await _promptName(
+      title: 'Name this group',
+      initial: defaultName,
+    );
+    if (name == null || !mounted) return;
+    try {
+      final memberUsernames = users
+          .map((u) => u['username']?.toString())
+          .whereType<String>()
+          .toList();
+      final group = await Api.instance.post('/groups', body: {
+        'name': name,
+        'memberUsernames': memberUsernames,
+      });
+      if (!mounted) return;
+      final id = asMap(group)['id']?.toString();
+      if (id != null) {
+        await context.push('/group/$id');
+        _load();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Could not create group: $e')));
+      }
+    }
+  }
+
+  Future<void> _createCommunity() async {
+    final name = await _promptName(title: 'Name your community');
+    if (name == null || !mounted) return;
+    try {
+      final community =
+          await Api.instance.post('/communities', body: {'name': name});
+      if (!mounted) return;
+      final id = asMap(community)['id']?.toString();
+      if (id != null) {
+        await context.push('/community/$id');
+        _load();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not create community: $e')));
+      }
+    }
+  }
+
+  Future<String?> _promptName({required String title, String initial = ''}) {
+    final controller = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KliqColors.surfaceElevated,
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final v = controller.text.trim();
+              Navigator.of(ctx).pop(v.isEmpty ? null : v);
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -90,51 +229,48 @@ class _InboxPageState extends State<InboxPage> {
                     itemCount: _conversations.length,
                     itemBuilder: (context, i) {
                       final c = _conversations[i];
-                      final other = asMap(c['user'] ?? c['other']);
-                      final unread = pickInt(c, ['unreadCount']);
+                      final isGroup = c['kind'] == 'group';
                       return ListTile(
-                        leading: KliqAvatar(
-                            other['avatarUrl']?.toString(),
-                            radius: 22),
-                        title: Text(
-                            pickStr(other, ['displayName', 'username']),
-                            style: TextStyle(
-                                fontWeight: unread > 0
-                                    ? FontWeight.w800
-                                    : FontWeight.w600)),
-                        subtitle: Text(pickStr(c, ['lastMessage']),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                color: unread > 0
-                                    ? KliqColors.textPrimary
-                                    : KliqColors.textMuted,
-                                fontSize: 12.5)),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        leading: Stack(
+                          clipBehavior: Clip.none,
                           children: [
-                            Text(
-                                timeAgo(
-                                    c['lastMessageAt']?.toString()),
-                                style: const TextStyle(
-                                    color: KliqColors.textMuted,
-                                    fontSize: 11)),
-                            if (unread > 0) ...[
-                              const SizedBox(height: 4),
-                              CircleAvatar(
-                                radius: 9,
-                                backgroundColor: KliqColors.pink,
-                                child: Text('$unread',
-                                    style: const TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800)),
+                            KliqAvatar(c['avatarUrl']?.toString(), radius: 22),
+                            if (isGroup)
+                              const Positioned(
+                                right: -2,
+                                bottom: -2,
+                                child: CircleAvatar(
+                                  radius: 8,
+                                  backgroundColor: KliqColors.purple,
+                                  child: Icon(Icons.group,
+                                      size: 10, color: Colors.white),
+                                ),
                               ),
-                            ],
                           ],
                         ),
-                        onTap: () =>
-                            context.push('/chat/${c['id']}'),
+                        title: Text(pickStr(c, ['title'], fallback: 'Chat'),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(
+                            pickStr(c, ['preview'],
+                                fallback: isGroup
+                                    ? 'No messages yet'
+                                    : 'Say hello'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: KliqColors.textMuted, fontSize: 12.5)),
+                        trailing: Text(
+                            timeAgo(c['sortAt']?.toString()),
+                            style: const TextStyle(
+                                color: KliqColors.textMuted, fontSize: 11)),
+                        onTap: () {
+                          if (isGroup) {
+                            context.push('/group/${c['id']}');
+                          } else {
+                            context.push('/chat/${c['id']}?type=thread');
+                          }
+                        },
                       );
                     },
                   ),
@@ -143,142 +279,21 @@ class _InboxPageState extends State<InboxPage> {
   }
 }
 
-/// Bottom sheet that searches app users and returns the picked user's id.
-class _StartChatSheet extends StatefulWidget {
-  const _StartChatSheet();
-
-  @override
-  State<_StartChatSheet> createState() => _StartChatSheetState();
-}
-
-class _StartChatSheetState extends State<_StartChatSheet> {
-  final _query = TextEditingController();
-  Timer? _debounce;
-  List<Map<String, dynamic>> _results = [];
-  bool _loading = false;
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _query.dispose();
-    super.dispose();
-  }
-
-  void _onChanged(String q) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () => _search(q.trim()));
-  }
-
-  Future<void> _search(String q) async {
-    if (q.isEmpty) {
-      setState(() {
-        _results = [];
-        _loading = false;
-      });
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      final data = await Api.instance.get('/users/search', query: {'q': q});
-      if (!mounted) return;
-      setState(() {
-        _results = asMapList(data, key: 'users');
-        _loading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: KliqColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: TextField(
-                controller: _query,
-                autofocus: true,
-                onChanged: _onChanged,
-                decoration: const InputDecoration(
-                  hintText: 'Search people to message',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.contacts_outlined,
-                  color: KliqColors.cyan),
-              title: const Text('Find contacts'),
-              subtitle: const Text('See which friends are already on KLIQ',
-                  style: TextStyle(fontSize: 12)),
-              onTap: () {
-                Navigator.of(context).pop();
-                context.push('/contacts');
-              },
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: _loading
-                  ? const CenterSpinner()
-                  : _results.isEmpty
-                      ? Center(
-                          child: Text(
-                            _query.text.trim().isEmpty
-                                ? 'Search for someone to start a chat'
-                                : 'No people found',
-                            style: const TextStyle(
-                                color: KliqColors.textMuted),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: _results.length,
-                          itemBuilder: (context, i) {
-                            final u = _results[i];
-                            return ListTile(
-                              leading: KliqAvatar(
-                                  u['avatarUrl']?.toString(),
-                                  radius: 20),
-                              title: Text(
-                                  pickStr(u, ['displayName', 'username']),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600)),
-                              subtitle: Text('@${u['username'] ?? ''}',
-                                  style: const TextStyle(
-                                      color: KliqColors.textMuted,
-                                      fontSize: 12)),
-                              onTap: () => Navigator.of(context)
-                                  .pop(u['id']?.toString()),
-                            );
-                          },
-                        ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class ChatPage extends StatefulWidget {
-  const ChatPage({super.key, required this.conversationId, this.isGroup = false});
+  const ChatPage({
+    super.key,
+    required this.conversationId,
+    this.isGroup = false,
+    this.isThreadId = false,
+  });
 
+  /// For 1:1 chats this is either a userId (isThreadId=false — resolve or
+  /// lazily create the DM thread, e.g. when opened from a profile) or an
+  /// existing threadId (isThreadId=true — opened from the inbox list). For
+  /// group chats (isGroup=true) this is always the groupId.
   final String conversationId;
   final bool isGroup;
+  final bool isThreadId;
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -288,20 +303,16 @@ class _ChatPageState extends State<ChatPage> {
   final _composer = TextEditingController();
   List<Map<String, dynamic>> _messages = [];
   Map<String, dynamic> _other = {};
+  String? _threadId;
   bool _loading = true;
   StreamSubscription? _wsSub;
 
   @override
   void initState() {
     super.initState();
+    _threadId = widget.isThreadId ? widget.conversationId : null;
     _load();
-    _wsSub = WsService.instance.events.listen((e) {
-      if (e['type'] == 'message' &&
-          (e['conversationId'] == widget.conversationId)) {
-        final msg = asMap(e['message'] ?? e);
-        if (mounted) setState(() => _messages.add(msg));
-      }
-    });
+    _wsSub = WsService.instance.events.listen(_onWsEvent);
   }
 
   @override
@@ -311,24 +322,68 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
+  void _onWsEvent(Map<String, dynamic> e) {
+    if (widget.isGroup) {
+      if (e['type'] == 'group:message' &&
+          e['groupId']?.toString() == widget.conversationId) {
+        final msg = asMap(e['message']);
+        if (mounted) setState(() => _messages.add(msg));
+      }
+      return;
+    }
+    if (e['type'] == 'message:new' &&
+        _threadId != null &&
+        e['threadId']?.toString() == _threadId) {
+      final copy = Map<String, dynamic>.from(e)..remove('type');
+      if (mounted) setState(() => _messages.add(copy));
+    }
+  }
+
   Future<void> _load() async {
     try {
-      final convs = await Api.instance
-          .get('/messages/conversations')
-          .catchError((_) => []);
-      _other = asMap(asMapList(convs, key: 'conversations')
-              .where((c) => c['id'] == widget.conversationId)
-              .firstOrNull?['user'] ??
-          {});
-      final data =
-          await Api.instance.get('/messages/${widget.conversationId}');
-      if (mounted) {
-        setState(() {
-          _messages = asMapList(data, key: 'messages');
-          _loading = false;
-        });
+      if (widget.isGroup) {
+        final info =
+            await Api.instance.get('/groups/${widget.conversationId}');
+        final infoMap = asMap(info);
+        _other = {
+          'displayName': pickStr(infoMap, ['name'], fallback: 'Group chat'),
+          'avatarUrl': infoMap['avatarUrl'],
+        };
+        final data =
+            await Api.instance.get('/groups/${widget.conversationId}/messages');
+        // Server returns newest-first; the message list below is oldest-first.
+        _messages = asMapList(data).reversed.toList();
+      } else {
+        final threads =
+            await Api.instance.get('/messages/threads').catchError((_) => []);
+        final threadList = asMapList(threads);
+        final matched = _findThread(
+          threadList,
+          widget.isThreadId
+              ? (t) => t['threadId']?.toString() == widget.conversationId
+              : (t) =>
+                  asMap(t['other'])['id']?.toString() == widget.conversationId,
+        );
+        if (!widget.isThreadId) {
+          _threadId = matched?['threadId']?.toString();
+        }
+        if (matched != null) {
+          _other = asMap(matched['other']);
+        } else if (!widget.isThreadId) {
+          // No thread yet — fetch the recipient's profile for the header.
+          final u = await Api.instance
+              .get('/users/${widget.conversationId}')
+              .catchError((_) => null);
+          if (u != null) _other = asMap(u);
+        }
+        if (_threadId != null) {
+          final data =
+              await Api.instance.get('/messages/threads/$_threadId');
+          _messages = asMapList(data);
+        }
       }
     } catch (_) {
+    } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -337,18 +392,34 @@ class _ChatPageState extends State<ChatPage> {
     final body = _composer.text.trim();
     if (body.isEmpty) return;
     final myId = context.read<Session>().userId;
+    _composer.clear();
     setState(() {
       _messages.add({
         'id': DateTime.now().microsecondsSinceEpoch.toString(),
         'senderId': myId,
         'body': body,
         'createdAt': DateTime.now().toIso8601String(),
+        'isMine': true,
       });
     });
-    _composer.clear();
-    Api.instance
-        .post('/messages/${widget.conversationId}', body: {'body': body})
-        .catchError((_) => null);
+
+    try {
+      if (widget.isGroup) {
+        await Api.instance.post(
+            '/groups/${widget.conversationId}/messages',
+            body: {'body': body});
+      } else {
+        final res = await Api.instance.post('/messages/send', body: {
+          if (_threadId != null)
+            'threadId': _threadId
+          else
+            'recipientId': widget.conversationId,
+          'body': body,
+        });
+        final threadId = asMap(res)['threadId']?.toString();
+        if (threadId != null) _threadId = threadId;
+      }
+    } catch (_) {}
   }
 
   @override
