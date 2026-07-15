@@ -8,6 +8,7 @@ import '../../../core/session.dart';
 import '../../../core/theme.dart';
 import '../../common/comments_sheet.dart';
 import '../../common/kliq_video.dart';
+import '../../common/share_sheet.dart';
 import '../feed_models.dart';
 import 'caption_text.dart';
 import 'kliq_avatar.dart';
@@ -120,8 +121,18 @@ class _PostCardState extends State<PostCard> {
   }
 
   void _share() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Link copied: kliq.app/post/${post.id}')),
+    showShareSheet(
+      context,
+      target: ShareTarget(
+        postId: post.id,
+        authorUsername: post.author.username,
+        caption: post.body,
+        mediaUrl: post.mediaUrls.isNotEmpty ? post.mediaUrls.first : null,
+        mediaType: post.isVideo ? 'video' : 'image',
+      ),
+      onShared: () {
+        if (mounted) setState(() => post.shareCount += 1);
+      },
     );
   }
 

@@ -82,7 +82,7 @@ class Post {
   final String mediaType;
   int likeCount;
   int commentCount;
-  final int shareCount;
+  int shareCount;
   bool liked;
   bool saved;
   final DateTime createdAt;

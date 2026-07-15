@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../core/ws_service.dart';
 import '../common/comments_sheet.dart';
 import '../common/kliq_video.dart';
+import '../common/share_sheet.dart';
 import '../discover/discover_common.dart';
 import '../live/live_list_page.dart';
 import '../shell/app_shell.dart';
@@ -377,6 +378,29 @@ class _ReelItem extends StatefulWidget {
 class _ReelItemState extends State<_ReelItem> {
   bool _manualPaused = false;
 
+  void _share() {
+    final reel = widget.reel;
+    final author = authorOf(reel);
+    showShareSheet(
+      context,
+      target: ShareTarget(
+        postId: reel['id'].toString(),
+        authorUsername: author['username'] ?? '',
+        caption: pickStr(reel, ['caption', 'body']),
+        mediaUrl: pickStr(reel, ['videoUrl', 'mediaUrl']).isEmpty
+            ? null
+            : pickStr(reel, ['videoUrl', 'mediaUrl']),
+        mediaType: 'video',
+      ),
+      onShared: () {
+        if (mounted) {
+          setState(() =>
+              reel['shareCount'] = pickInt(reel, ['shareCount']) + 1);
+        }
+      },
+    );
+  }
+
   @override
   void didUpdateWidget(_ReelItem oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -522,10 +546,7 @@ class _ReelItemState extends State<_ReelItem> {
                   context,
                   icon: Icons.share_outlined,
                   label: fmtCount(pickInt(reel, ['shareCount'])),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Link copied')));
-                  },
+                  onTap: _share,
                 ),
                 const SizedBox(height: 18),
                 _railButton(
