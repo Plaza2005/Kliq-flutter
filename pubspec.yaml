@@ -23,10 +23,13 @@ dependencies:
   image: ^4.8.0
   image_picker: ^1.2.3
   intl: ^0.20.3
+  just_audio: ^0.10.6
   media_kit: ^1.2.6
   media_kit_libs_video: ^1.0.7
   media_kit_video: ^2.0.1
+  path_provider: ^2.1.6
   provider: ^6.1.5+1
+  record: ^7.1.1
   share_plus: ^13.2.0
   shared_preferences: ^2.5.5
   supabase_flutter: ^2.16.0
