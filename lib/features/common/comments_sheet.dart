@@ -9,14 +9,15 @@ import '../../core/theme.dart';
 import '../../core/ws_service.dart';
 import '../discover/discover_common.dart' show CenterSpinner, ErrorState, KliqAvatar;
 import '../home/feed_models.dart';
+import 'sticker_library.dart';
 
 Map<String, dynamic> _asMap(dynamic v) =>
     v is Map ? v.cast<String, dynamic>() : <String, dynamic>{};
 
-/// Kind of attachment a comment/reply can carry. Only [image] is wired up
-/// this phase; the enum exists so a later phase can add "video"/"sticker"
-/// to the same attach-button menu without reshaping the composer.
-enum CommentAttachmentKind { image }
+/// Kind of attachment a comment/reply can carry: a plain gallery [image], or
+/// a [sticker] — either picked from the user's saved sticker library or
+/// produced by converting a short video via `/stickers/convert`.
+enum CommentAttachmentKind { image, sticker }
 
 class PendingAttachment {
   const PendingAttachment(this.kind, this.url, this.mediaType);
@@ -372,19 +373,28 @@ class CommentTile extends StatelessWidget {
                 if (comment.mediaUrl != null && comment.mediaUrl!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        Api.instance.mediaUrl(comment.mediaUrl!),
-                        width: 140,
-                        height: 140,
-                        fit: BoxFit.cover,
-                        errorBuilder: (c, e, s) => Container(
-                          width: 140,
-                          height: 140,
-                          color: KliqColors.surfaceElevated,
-                          child: const Icon(Icons.broken_image_outlined,
-                              color: KliqColors.textMuted),
+                    child: GestureDetector(
+                      onLongPress: () => saveMediaToStickerLibrary(
+                        context,
+                        comment.mediaUrl!,
+                        sourceType: 'comment',
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          Api.instance.mediaUrl(comment.mediaUrl!),
+                          width: comment.mediaType == 'sticker' ? 100 : 140,
+                          height: comment.mediaType == 'sticker' ? 100 : 140,
+                          fit: comment.mediaType == 'sticker'
+                              ? BoxFit.contain
+                              : BoxFit.cover,
+                          errorBuilder: (c, e, s) => Container(
+                            width: comment.mediaType == 'sticker' ? 100 : 140,
+                            height: comment.mediaType == 'sticker' ? 100 : 140,
+                            color: KliqColors.surfaceElevated,
+                            child: const Icon(Icons.broken_image_outlined,
+                                color: KliqColors.textMuted),
+                          ),
                         ),
                       ),
                     ),
@@ -528,6 +538,13 @@ class _CommentComposerState extends State<CommentComposer> {
     }
   }
 
+  Future<void> _pickSticker() async {
+    final url = await showStickerPickerSheet(context);
+    if (url == null || !mounted) return;
+    setState(() =>
+        _attachment = PendingAttachment(CommentAttachmentKind.sticker, url, 'sticker'));
+  }
+
   Future<void> _submit() async {
     final body = _controller.text.trim();
     if (body.isEmpty && _attachment == null) return;
@@ -584,7 +601,9 @@ class _CommentComposerState extends State<CommentComposer> {
                         Api.instance.mediaUrl(_attachment!.url),
                         width: 64,
                         height: 64,
-                        fit: BoxFit.cover,
+                        fit: _attachment!.kind == CommentAttachmentKind.sticker
+                            ? BoxFit.contain
+                            : BoxFit.cover,
                       ),
                     ),
                     Positioned(
@@ -616,6 +635,11 @@ class _CommentComposerState extends State<CommentComposer> {
                       : const Icon(Icons.image_outlined,
                           color: KliqColors.textSecondary),
                   onPressed: _uploading ? null : _pickImage,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.emoji_emotions_outlined,
+                      color: KliqColors.textSecondary),
+                  onPressed: _pickSticker,
                 ),
                 Expanded(
                   child: TextField(
