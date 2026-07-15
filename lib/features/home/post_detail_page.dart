@@ -1,14 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/api_client.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
-import '../discover/discover_common.dart' show CenterSpinner, ErrorState, KliqAvatar;
+import '../../core/ws_service.dart';
+import '../common/comments_sheet.dart';
+import '../discover/discover_common.dart' show CenterSpinner, ErrorState;
 import 'feed_models.dart';
 import 'widgets/post_card.dart';
 
+Map<String, dynamic> _asMap(dynamic v) =>
+    v is Map ? v.cast<String, dynamic>() : <String, dynamic>{};
+
 /// Post page: the full post card plus its comment thread and a composer.
+/// Renders the thread inline (full-page context) using the same
+/// [CommentTile]/[CommentComposer] widgets the comments bottom-sheet uses,
+/// so there is a single implementation of comment-tile rendering.
 class PostDetailPage extends StatefulWidget {
   const PostDetailPage({super.key, required this.postId});
 
@@ -20,21 +30,25 @@ class PostDetailPage extends StatefulWidget {
 
 class _PostDetailPageState extends State<PostDetailPage> {
   Post? _post;
-  List<PostComment> _comments = [];
+  final _comments = <PostComment>[];
+  final _seenIds = <String>{};
+  final _expandedIds = <String>{};
+  final _repliesLoading = <String>{};
+  PostComment? _replyTarget;
   bool _loading = true;
-  bool _sending = false;
   String? _error;
-  final _composer = TextEditingController();
+  StreamSubscription? _wsSub;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _wsSub = WsService.instance.events.listen(_onWsEvent);
   }
 
   @override
   void dispose() {
-    _composer.dispose();
+    _wsSub?.cancel();
     super.dispose();
   }
 
@@ -48,13 +62,22 @@ class _PostDetailPageState extends State<PostDetailPage> {
       final comments =
           await Api.instance.get('/posts/${widget.postId}/comments');
       if (!mounted) return;
+      final parsedComments = (comments is List ? comments : const [])
+          .whereType<Map>()
+          .map((e) => PostComment.fromJson(e.cast<String, dynamic>()))
+          .toList();
+      _seenIds.clear();
+      for (final c in parsedComments) {
+        _seenIds.add(c.id);
+        for (final r in c.replies) {
+          _seenIds.add(r.id);
+        }
+      }
       setState(() {
-        _post = Post.fromJson(
-            (post as Map).cast<String, dynamic>());
-        _comments = (comments is List ? comments : const [])
-            .whereType<Map>()
-            .map((e) => PostComment.fromJson(e.cast<String, dynamic>()))
-            .toList();
+        _post = Post.fromJson((post as Map).cast<String, dynamic>());
+        _comments
+          ..clear()
+          ..addAll(parsedComments);
         _loading = false;
       });
     } catch (e) {
@@ -66,22 +89,105 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  Future<void> _send() async {
-    final body = _composer.text.trim();
-    if (body.isEmpty || _sending) return;
-    setState(() => _sending = true);
+  void _onWsEvent(Map<String, dynamic> e) {
+    if (e['type'] != 'post:comment') return;
+    if (e['postId']?.toString() != widget.postId) return;
+    final map = _asMap(e['comment']);
+    final id = map['id']?.toString();
+    if (id == null || id.isEmpty || !_seenIds.add(id)) return;
+    _applyNewComment(PostComment.fromJson(map));
+  }
+
+  void _applyNewComment(PostComment comment) {
+    if (!mounted) return;
+    setState(() {
+      if (_post != null) _post!.commentCount++;
+      if (comment.parentId == null) {
+        _comments.insert(0, comment);
+      } else {
+        final idx = _comments.indexWhere((c) => c.id == comment.parentId);
+        if (idx != -1) {
+          final parent = _comments[idx];
+          parent.replyCount++;
+          if (_expandedIds.contains(parent.id) || parent.replies.length < 3) {
+            parent.replies.add(comment);
+          }
+        }
+      }
+    });
+  }
+
+  Future<void> _viewMoreReplies(PostComment comment) async {
+    if (_expandedIds.contains(comment.id) || _repliesLoading.contains(comment.id)) return;
+    setState(() => _repliesLoading.add(comment.id));
     try {
-      await Api.instance
-          .post('/posts/${widget.postId}/comments', body: {'body': body});
-      _composer.clear();
-      await _load();
+      final data = await Api.instance
+          .get('/posts/${widget.postId}/comments/${comment.id}/replies');
+      final replies = (data is List ? data : const [])
+          .whereType<Map>()
+          .map((e) => PostComment.fromJson(e.cast<String, dynamic>()))
+          .toList();
+      if (!mounted) return;
+      for (final r in replies) {
+        _seenIds.add(r.id);
+      }
+      setState(() {
+        comment.replies = replies;
+        _expandedIds.add(comment.id);
+        _repliesLoading.remove(comment.id);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _repliesLoading.remove(comment.id));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Could not load replies: $e')));
+    }
+  }
+
+  Future<void> _toggleCommentLike(PostComment comment) async {
+    final wasLiked = comment.liked;
+    setState(() {
+      comment.liked = !wasLiked;
+      comment.likeCount += wasLiked ? -1 : 1;
+    });
+    try {
+      final res = await Api.instance
+          .post('/posts/${widget.postId}/comments/${comment.id}/like');
+      if (mounted && res is Map && res['liked'] is bool) {
+        setState(() => comment.liked = res['liked'] as bool);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          comment.liked = wasLiked;
+          comment.likeCount += wasLiked ? 1 : -1;
+        });
+      }
+    }
+  }
+
+  Future<bool> _send(String body, PendingAttachment? attachment) async {
+    try {
+      final parentId = _replyTarget?.id;
+      final res = await Api.instance.post('/posts/${widget.postId}/comments', body: {
+        'body': body,
+        'parentId': ?parentId,
+        if (attachment != null) 'mediaUrl': attachment.url,
+        if (attachment != null) 'mediaType': attachment.mediaType,
+      });
+      if (res is Map) {
+        final created = PostComment.fromJson(res.cast<String, dynamic>());
+        _seenIds.add(created.id);
+        _applyNewComment(created);
+      }
+      if (mounted) setState(() => _replyTarget = null);
+      return true;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Comment failed: $e')));
       }
-    } finally {
-      if (mounted) setState(() => _sending = false);
+      return false;
     }
   }
 
@@ -107,7 +213,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                             Padding(
                               padding: const EdgeInsets.all(14),
                               child: Text(
-                                  'Comments (${_comments.length})',
+                                  'Comments (${_post?.commentCount ?? _comments.length})',
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w700)),
                             ),
@@ -121,95 +227,32 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                 ),
                               )
                             else
-                              for (final c in _comments) _CommentTile(c),
-                            const SizedBox(height: 24),
+                              for (final c in _comments)
+                                CommentTile(
+                                  comment: c,
+                                  onToggleLike: _toggleCommentLike,
+                                  onReply: (target) =>
+                                      setState(() => _replyTarget = target),
+                                  onViewMoreReplies: _viewMoreReplies,
+                                  repliesLoading:
+                                      _repliesLoading.contains(c.id),
+                                  expanded: _expandedIds.contains(c.id),
+                                ),
+                            const SizedBox(height: 12),
                           ],
                         ),
                       ),
                     ),
-                    SafeArea(
-                      top: false,
-                      child: Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                        child: Row(
-                          children: [
-                            KliqAvatar(
-                                session.user?['avatarUrl'] as String?,
-                                radius: 16),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextField(
-                                controller: _composer,
-                                decoration: const InputDecoration(
-                                    hintText: 'Add a comment…'),
-                                onSubmitted: (_) => _send(),
-                              ),
-                            ),
-                            IconButton(
-                              icon: _sending
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2))
-                                  : const Icon(Icons.send,
-                                      color: KliqColors.cyan),
-                              onPressed: _send,
-                            ),
-                          ],
-                        ),
-                      ),
+                    const Divider(height: 1),
+                    CommentComposer(
+                      onSubmit: _send,
+                      replyingToUsername: _replyTarget?.author.username,
+                      onCancelReply: () =>
+                          setState(() => _replyTarget = null),
+                      avatarUrl: session.user?['avatarUrl'] as String?,
                     ),
                   ],
                 ),
-    );
-  }
-}
-
-class _CommentTile extends StatelessWidget {
-  const _CommentTile(this.comment);
-
-  final PostComment comment;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          KliqAvatar(comment.author.avatarUrl, radius: 16),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(comment.author.username,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 13)),
-                    const SizedBox(width: 8),
-                    Text(timeAgo(comment.createdAt),
-                        style: const TextStyle(
-                            color: KliqColors.textMuted, fontSize: 11)),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(comment.body),
-                if (comment.likeCount > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text('${formatCount(comment.likeCount)} likes',
-                        style: const TextStyle(
-                            color: KliqColors.textMuted, fontSize: 11)),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

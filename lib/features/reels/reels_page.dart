@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../core/ws_service.dart';
+import '../common/comments_sheet.dart';
 import '../common/kliq_video.dart';
 import '../discover/discover_common.dart';
 import '../live/live_list_page.dart';
@@ -507,7 +508,14 @@ class _ReelItemState extends State<_ReelItem> {
                   context,
                   icon: Icons.mode_comment_outlined,
                   label: fmtCount(pickInt(reel, ['commentCount'])),
-                  onTap: () => context.push('/post/${reel['id']}'),
+                  onTap: () => showCommentsSheet(
+                    context,
+                    postId: reel['id'].toString(),
+                    initialCommentCount: pickInt(reel, ['commentCount']),
+                    onCommentCountChanged: (n) {
+                      if (mounted) setState(() => reel['commentCount'] = n);
+                    },
+                  ),
                 ),
                 const SizedBox(height: 18),
                 _railButton(

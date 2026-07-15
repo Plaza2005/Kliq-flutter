@@ -166,27 +166,53 @@ class PostComment {
     required this.likeCount,
     required this.createdAt,
     required this.replies,
+    this.liked = false,
+    this.parentId,
+    this.replyCount = 0,
+    this.mediaUrl,
+    this.mediaType,
   });
 
   final String id;
   final PostAuthor author;
   final String body;
-  final int likeCount;
+  int likeCount;
+  bool liked;
   final DateTime createdAt;
-  final List<PostComment> replies;
+
+  /// Preview replies (feed view returns up to 3); replaced with the full
+  /// thread in place once "View more replies" is tapped.
+  List<PostComment> replies;
+
+  /// Null for a top-level comment; set to the parent comment's id for a reply.
+  final String? parentId;
+
+  /// Total reply count (may exceed `replies.length` until fully expanded).
+  int replyCount;
+
+  /// Optional image attachment (`mediaType` is currently always "image";
+  /// the field is a plain string so a later phase can add "video"/"sticker"
+  /// without changing this model).
+  final String? mediaUrl;
+  final String? mediaType;
 
   factory PostComment.fromJson(Map<String, dynamic> json) => PostComment(
         id: json['id']?.toString() ?? '',
         author: PostAuthor.fromJson(_asMap(json['author'])),
         body: json['body']?.toString() ?? '',
         likeCount: _asInt(json['likeCount']),
+        liked: json['liked'] == true,
         createdAt: _asDate(json['createdAt']),
+        parentId: json['parentId']?.toString(),
+        replyCount: _asInt(json['replyCount']),
+        mediaUrl: json['mediaUrl']?.toString(),
+        mediaType: json['mediaType']?.toString(),
         replies: (json['replies'] is List)
             ? (json['replies'] as List)
                 .whereType<Map>()
                 .map((e) => PostComment.fromJson(_asMap(e)))
                 .toList()
-            : const [],
+            : <PostComment>[],
       );
 }
 

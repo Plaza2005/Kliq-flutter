@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/api_client.dart';
 import '../../../core/session.dart';
 import '../../../core/theme.dart';
+import '../../common/comments_sheet.dart';
 import '../../common/kliq_video.dart';
 import '../feed_models.dart';
 import 'caption_text.dart';
@@ -537,7 +538,14 @@ class _PostCardState extends State<PostCard> {
           ),
           IconButton(
             icon: const Icon(Icons.mode_comment_outlined),
-            onPressed: () => context.push('/post/${post.id}'),
+            onPressed: () => showCommentsSheet(
+              context,
+              postId: post.id,
+              initialCommentCount: post.commentCount,
+              onCommentCountChanged: (n) {
+                if (mounted) setState(() => post.commentCount = n);
+              },
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.send_outlined),
