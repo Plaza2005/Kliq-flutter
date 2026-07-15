@@ -9,6 +9,7 @@ import '../../core/theme.dart';
 import '../../core/ws_service.dart';
 import '../discover/discover_common.dart' show CenterSpinner, ErrorState, KliqAvatar;
 import '../home/feed_models.dart';
+import 'kliq_composer.dart' show EmojiPanel, EmojiToggleButton;
 import 'sticker_library.dart';
 
 Map<String, dynamic> _asMap(dynamic v) =>
@@ -503,14 +504,27 @@ class CommentComposer extends StatefulWidget {
 
 class _CommentComposerState extends State<CommentComposer> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
   PendingAttachment? _attachment;
   bool _uploading = false;
   bool _sending = false;
+  bool _showEmoji = false;
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  void _toggleEmoji() {
+    final opening = !_showEmoji;
+    if (opening) {
+      _focusNode.unfocus();
+    } else {
+      _focusNode.requestFocus();
+    }
+    setState(() => _showEmoji = opening);
   }
 
   Future<void> _pickImage() async {
@@ -641,9 +655,11 @@ class _CommentComposerState extends State<CommentComposer> {
                       color: KliqColors.textSecondary),
                   onPressed: _pickSticker,
                 ),
+                EmojiToggleButton(expanded: _showEmoji, onPressed: _toggleEmoji),
                 Expanded(
                   child: TextField(
                     controller: _controller,
+                    focusNode: _focusNode,
                     minLines: 1,
                     maxLines: 4,
                     decoration: InputDecoration(
@@ -651,6 +667,9 @@ class _CommentComposerState extends State<CommentComposer> {
                           ? 'Reply…'
                           : 'Add a comment…',
                     ),
+                    onTap: () {
+                      if (_showEmoji) setState(() => _showEmoji = false);
+                    },
                     onSubmitted: (_) => _submit(),
                   ),
                 ),
@@ -665,6 +684,7 @@ class _CommentComposerState extends State<CommentComposer> {
                 ),
               ],
             ),
+            if (_showEmoji) EmojiPanel(controller: _controller),
           ],
         ),
       ),

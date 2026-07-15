@@ -1,14 +1,18 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart' show MultipartFile;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/api_client.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
 import '../../core/ws_service.dart';
+import '../common/kliq_composer.dart';
 import '../common/people_picker_sheet.dart';
+import '../common/sticker_library.dart' show saveMediaToStickerLibrary;
 import '../discover/discover_common.dart';
 
 /// Returns the first thread map matching [test], or null if none match.
@@ -300,7 +304,6 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final _composer = TextEditingController();
   List<Map<String, dynamic>> _messages = [];
   Map<String, dynamic> _other = {};
   String? _threadId;
@@ -318,7 +321,6 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void dispose() {
     _wsSub?.cancel();
-    _composer.dispose();
     super.dispose();
   }
 
@@ -388,16 +390,23 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> _send() async {
-    final body = _composer.text.trim();
-    if (body.isEmpty) return;
+  /// Sends a message with any combination of [body] text and a media
+  /// attachment ([mediaUrl] + [mediaType]) — used for plain text sends, for
+  /// stickers picked from the composer (mediaType 'sticker'), and for
+  /// image attachments (mediaType 'image'). Optimistically appends the
+  /// message locally, then posts to whichever send path applies (DM
+  /// `/messages/send` or group `/groups/:id/messages`).
+  Future<void> _sendMessage({String? body, String? mediaUrl, String? mediaType}) async {
+    final text = body?.trim() ?? '';
+    if (text.isEmpty && mediaUrl == null) return;
     final myId = context.read<Session>().userId;
-    _composer.clear();
     setState(() {
       _messages.add({
         'id': DateTime.now().microsecondsSinceEpoch.toString(),
         'senderId': myId,
-        'body': body,
+        'body': text,
+        'mediaUrl': ?mediaUrl,
+        'mediaType': ?mediaType,
         'createdAt': DateTime.now().toIso8601String(),
         'isMine': true,
       });
@@ -405,21 +414,93 @@ class _ChatPageState extends State<ChatPage> {
 
     try {
       if (widget.isGroup) {
-        await Api.instance.post(
-            '/groups/${widget.conversationId}/messages',
-            body: {'body': body});
+        await Api.instance.post('/groups/${widget.conversationId}/messages', body: {
+          'body': text,
+          'mediaUrl': ?mediaUrl,
+          'mediaType': ?mediaType,
+        });
       } else {
         final res = await Api.instance.post('/messages/send', body: {
           if (_threadId != null)
             'threadId': _threadId
           else
             'recipientId': widget.conversationId,
-          'body': body,
+          'body': text,
+          'mediaUrl': ?mediaUrl,
+          'mediaType': ?mediaType,
         });
         final threadId = asMap(res)['threadId']?.toString();
         if (threadId != null) _threadId = threadId;
       }
     } catch (_) {}
+  }
+
+  /// Attach-image handler for the composer's generic attach button: picks
+  /// from the gallery, uploads it, then sends it as its own image message.
+  Future<void> _attachImage() async {
+    try {
+      final picked =
+          await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1600);
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      final res = await Api.instance
+          .upload('/upload', MultipartFile.fromBytes(bytes, filename: picked.name));
+      final url = res is Map ? res['url']?.toString() : null;
+      if (url != null && url.isNotEmpty) {
+        await _sendMessage(mediaUrl: url, mediaType: 'image');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+      }
+    }
+  }
+
+  /// Renders a message bubble's content: any media attachment (long-press
+  /// to save a sticker into the user's library, mirroring comments_sheet.dart's
+  /// `CommentTile`) followed by the text body, if any.
+  Widget _bubbleContent(Map<String, dynamic> m) {
+    final mediaUrl = pickStr(m, ['mediaUrl']);
+    final mediaType = pickStr(m, ['mediaType']);
+    final body = pickStr(m, ['body']);
+    final isSticker = mediaType == 'sticker';
+    final children = <Widget>[];
+    if (mediaUrl.isNotEmpty) {
+      Widget image = ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          Api.instance.mediaUrl(mediaUrl),
+          width: isSticker ? 100 : 160,
+          height: isSticker ? 100 : 160,
+          fit: isSticker ? BoxFit.contain : BoxFit.cover,
+          errorBuilder: (c, e, s) => Container(
+            width: isSticker ? 100 : 160,
+            height: isSticker ? 100 : 160,
+            color: KliqColors.surfaceElevated,
+            child: const Icon(Icons.broken_image_outlined,
+                color: KliqColors.textMuted),
+          ),
+        ),
+      );
+      if (isSticker) {
+        image = GestureDetector(
+          onLongPress: () =>
+              saveMediaToStickerLibrary(context, mediaUrl, sourceType: 'chat'),
+          child: image,
+        );
+      }
+      children.add(image);
+    }
+    if (body.isNotEmpty) {
+      if (children.isNotEmpty) children.add(const SizedBox(height: 6));
+      children.add(Text(body, style: const TextStyle(fontSize: 14)));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    );
   }
 
   @override
@@ -483,8 +564,7 @@ class _ChatPageState extends State<ChatPage> {
                                   Radius.circular(mine ? 4 : 16),
                             ),
                           ),
-                          child: Text(pickStr(m, ['body']),
-                              style: const TextStyle(fontSize: 14)),
+                          child: _bubbleContent(m),
                         ),
                       );
                     },
@@ -494,21 +574,12 @@ class _ChatPageState extends State<ChatPage> {
             top: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _composer,
-                      onSubmitted: (_) => _send(),
-                      decoration:
-                          const InputDecoration(hintText: 'Message…'),
-                    ),
-                  ),
-                  IconButton(
-                      icon:
-                          const Icon(Icons.send, color: KliqColors.cyan),
-                      onPressed: _send),
-                ],
+              child: KliqComposer(
+                hintText: 'Message…',
+                onSend: (text) => _sendMessage(body: text),
+                onStickerSelected: (url) =>
+                    _sendMessage(mediaUrl: url, mediaType: 'sticker'),
+                onAttach: _attachImage,
               ),
             ),
           ),
