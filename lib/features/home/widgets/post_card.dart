@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/api_client.dart';
 import '../../../core/session.dart';
 import '../../../core/theme.dart';
+import '../../common/kliq_video.dart';
 import '../feed_models.dart';
 import 'caption_text.dart';
 import 'kliq_avatar.dart';
@@ -39,6 +40,7 @@ class _PostCardState extends State<PostCard> {
   int _mediaIndex = 0;
   bool _showHeart = false;
   bool _likeBusy = false;
+  bool _repostBusy = false;
 
   Post get post => widget.post;
 
@@ -66,6 +68,31 @@ class _PostCardState extends State<PostCard> {
       }
     } finally {
       _likeBusy = false;
+    }
+  }
+
+  Future<void> _toggleRepost() async {
+    if (_repostBusy) return;
+    _repostBusy = true;
+    final wasReposted = post.reposted;
+    setState(() {
+      post.reposted = !wasReposted;
+      post.repostCount += wasReposted ? -1 : 1;
+    });
+    try {
+      final res = await Api.instance.post('/posts/${post.id}/repost');
+      if (res is Map && res['reposted'] is bool && mounted) {
+        setState(() => post.reposted = res['reposted'] as bool);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          post.reposted = wasReposted;
+          post.repostCount += wasReposted ? 1 : -1;
+        });
+      }
+    } finally {
+      _repostBusy = false;
     }
   }
 
@@ -102,6 +129,7 @@ class _PostCardState extends State<PostCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (post.repostedBy != null) _repostBanner(context),
         _header(context),
         _media(context),
         _actions(context),
@@ -142,6 +170,28 @@ class _PostCardState extends State<PostCard> {
         ),
         const SizedBox(height: 14),
       ],
+    );
+  }
+
+  Widget _repostBanner(BuildContext context) {
+    final by = post.repostedBy!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: GestureDetector(
+        onTap: () => context.push('/user/${by.username}'),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.repeat, size: 15, color: KliqColors.textSecondary),
+            const SizedBox(width: 6),
+            Text('Reposted by @${by.username}',
+                style: const TextStyle(
+                    color: KliqColors.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -366,6 +416,29 @@ class _PostCardState extends State<PostCard> {
       );
     }
 
+    if (post.isVideo && post.mediaUrls.isNotEmpty) {
+      return GestureDetector(
+        onDoubleTap: _doubleTapLike,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            AspectRatio(
+              aspectRatio: 1,
+              child: KliqVideo(
+                url: post.mediaUrls.first,
+                controlsEnabled: false,
+                loop: true,
+                autoPlay: true,
+                muted: true,
+                fit: BoxFit.cover,
+              ),
+            ),
+            _heartOverlay(),
+          ],
+        ),
+      );
+    }
+
     final many = post.mediaUrls.length > 1;
     return GestureDetector(
       onDoubleTap: _doubleTapLike,
@@ -472,6 +545,17 @@ class _PostCardState extends State<PostCard> {
           ),
           if (post.shareCount > 0)
             Text(formatCount(post.shareCount),
+                style: const TextStyle(
+                    color: KliqColors.textSecondary, fontSize: 12)),
+          IconButton(
+            icon: Icon(
+              Icons.repeat,
+              color: post.reposted ? KliqColors.cyan : KliqColors.textPrimary,
+            ),
+            onPressed: _toggleRepost,
+          ),
+          if (post.repostCount > 0)
+            Text(formatCount(post.repostCount),
                 style: const TextStyle(
                     color: KliqColors.textSecondary, fontSize: 12)),
           const Spacer(),

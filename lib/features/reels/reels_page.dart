@@ -167,6 +167,43 @@ class _ReelsPageState extends State<ReelsPage> {
     Api.instance.post('/posts/${r['id']}/like').catchError((_) => null);
   }
 
+  Future<void> _toggleRepost(int index) async {
+    final r = _reels[index];
+    final reposted = pickBool(r, ['reposted']);
+    setState(() {
+      r['reposted'] = !reposted;
+      r['repostCount'] = pickInt(r, ['repostCount']) + (reposted ? -1 : 1);
+    });
+    try {
+      final res = await Api.instance.post('/posts/${r['id']}/repost');
+      if (mounted && res is Map && res['reposted'] is bool) {
+        setState(() => r['reposted'] = res['reposted']);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          r['reposted'] = reposted;
+          r['repostCount'] = pickInt(r, ['repostCount']) + (reposted ? 1 : -1);
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleSave(int index) async {
+    final r = _reels[index];
+    final saved = pickBool(r, ['bookmarked', 'isSaved']);
+    setState(() => r['bookmarked'] = !saved);
+    try {
+      if (saved) {
+        await Api.instance.delete('/bookmarks/${r['id']}');
+      } else {
+        await Api.instance.post('/bookmarks/${r['id']}');
+      }
+    } catch (_) {
+      if (mounted) setState(() => r['bookmarked'] = saved);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -243,6 +280,8 @@ class _ReelsPageState extends State<ReelsPage> {
         active: i == _current,
         visible: _visible,
         onLike: () => _toggleLike(i),
+        onRepost: () => _toggleRepost(i),
+        onSave: () => _toggleSave(i),
       ),
     );
   }
@@ -319,12 +358,16 @@ class _ReelItem extends StatefulWidget {
     required this.active,
     required this.visible,
     required this.onLike,
+    required this.onRepost,
+    required this.onSave,
   });
 
   final Map<String, dynamic> reel;
   final bool active;
   final bool visible;
   final VoidCallback onLike;
+  final VoidCallback onRepost;
+  final VoidCallback onSave;
 
   @override
   State<_ReelItem> createState() => _ReelItemState();
@@ -348,6 +391,8 @@ class _ReelItemState extends State<_ReelItem> {
     final author = authorOf(reel);
     final videoUrl = pickStr(reel, ['videoUrl', 'mediaUrl']);
     final liked = pickBool(reel, ['isLiked', 'liked']);
+    final reposted = pickBool(reel, ['reposted']);
+    final saved = pickBool(reel, ['bookmarked', 'isSaved']);
     final hasVideo = videoUrl.isNotEmpty;
     final playing = widget.active && widget.visible && !_manualPaused;
 
@@ -473,6 +518,22 @@ class _ReelItemState extends State<_ReelItem> {
                     ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Link copied')));
                   },
+                ),
+                const SizedBox(height: 18),
+                _railButton(
+                  context,
+                  icon: Icons.repeat,
+                  color: reposted ? KliqColors.cyan : Colors.white,
+                  label: fmtCount(pickInt(reel, ['repostCount'])),
+                  onTap: widget.onRepost,
+                ),
+                const SizedBox(height: 18),
+                _railButton(
+                  context,
+                  icon: saved ? Icons.bookmark : Icons.bookmark_border,
+                  color: saved ? KliqColors.cyan : Colors.white,
+                  label: '',
+                  onTap: widget.onSave,
                 ),
               ],
             ),

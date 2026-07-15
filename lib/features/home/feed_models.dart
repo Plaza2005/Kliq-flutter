@@ -41,6 +41,21 @@ class PostAuthor {
       );
 }
 
+/// The small user summary attached to a repost (`{id, username, avatarUrl}`).
+class RepostedBy {
+  RepostedBy({required this.id, required this.username, this.avatarUrl});
+
+  final String id;
+  final String username;
+  final String? avatarUrl;
+
+  factory RepostedBy.fromJson(Map<String, dynamic> json) => RepostedBy(
+        id: json['id']?.toString() ?? '',
+        username: json['username']?.toString() ?? '',
+        avatarUrl: json['avatarUrl']?.toString(),
+      );
+}
+
 class Post {
   Post({
     required this.id,
@@ -55,6 +70,9 @@ class Post {
     required this.saved,
     required this.createdAt,
     this.location,
+    this.reposted = false,
+    this.repostCount = 0,
+    this.repostedBy,
   });
 
   final String id;
@@ -70,7 +88,18 @@ class Post {
   final DateTime createdAt;
   final String? location;
 
+  /// Whether the current viewer has reposted this post.
+  bool reposted;
+
+  /// Total number of times this post has been reposted.
+  int repostCount;
+
+  /// Set when this post appears in the feed because a followed user
+  /// reposted it — renders the "🔁 Reposted by @x" banner.
+  final RepostedBy? repostedBy;
+
   bool get isText => mediaUrls.isEmpty;
+  bool get isVideo => mediaType == 'video';
 
   factory Post.fromJson(Map<String, dynamic> json) {
     final media = <String>[];
@@ -84,6 +113,7 @@ class Post {
         (json['mediaUrl'] as String).isNotEmpty) {
       media.add(json['mediaUrl'] as String);
     }
+    final repostedByJson = json['repostedBy'];
     return Post(
       id: json['id']?.toString() ?? '',
       author: PostAuthor.fromJson(_asMap(json['author'])),
@@ -98,6 +128,11 @@ class Post {
       saved: json['bookmarked'] == true || json['isSaved'] == true,
       createdAt: _asDate(json['createdAt']),
       location: json['location']?.toString(),
+      reposted: json['reposted'] == true,
+      repostCount: _asInt(json['repostCount']),
+      repostedBy: repostedByJson is Map
+          ? RepostedBy.fromJson(_asMap(repostedByJson))
+          : null,
     );
   }
 }

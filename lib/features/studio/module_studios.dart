@@ -302,10 +302,12 @@ class _ReelsStudioPageState extends State<ReelsStudioPage> {
     setState(() => _publishing = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await Api.instance.post('/reels', body: {
-        'caption': _caption.text.trim(),
-        'videoUrl': _videoUrl,
-        if (_coverUrl != null) 'thumbnailUrl': _coverUrl,
+      await Api.instance.post('/posts', body: {
+        'body': _caption.text.trim(),
+        'mediaUrls': [_videoUrl],
+        'mediaType': 'video',
+        'postType': 'reel',
+        if (_coverUrl != null) 'thumbUrl': _coverUrl,
         if (_soundName.text.trim().isNotEmpty)
           'soundName': _soundName.text.trim(),
         'allowComments': _allowComments,
