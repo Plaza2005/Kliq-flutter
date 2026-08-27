@@ -2,7 +2,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/common/placeholder_page.dart';
 import '../../features/discover/explore_page.dart';
-import '../../features/home/home_feed_page.dart';
 import '../../features/home/misc_pages.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/reels/reels_page.dart';
