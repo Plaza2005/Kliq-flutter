@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import '../../core/backend/media_resolver.dart';
+
 /// Normalised data models for the feed/profile surfaces.
 ///
 /// The live Node API and the demo backend return slightly different JSON
@@ -101,17 +103,18 @@ class Post {
   bool get isText => mediaUrls.isEmpty;
   bool get isVideo => mediaType == 'video';
 
-  factory Post.fromJson(Map<String, dynamic> json) {
+  factory Post.fromJson(Map<String, dynamic> rawJson) {
+    final json = MediaResolver.mergeMetadataAndObjects(rawJson);
     final media = <String>[];
     final carousel = json['carouselMedia'];
     final urls = json['mediaUrls'];
     if (carousel is List && carousel.isNotEmpty) {
-      media.addAll(carousel.map((e) => e.toString()));
+      media.addAll(carousel.map((e) => MediaResolver.resolveUrl(e.toString())));
     } else if (urls is List && urls.isNotEmpty) {
-      media.addAll(urls.map((e) => e.toString()));
+      media.addAll(urls.map((e) => MediaResolver.resolveUrl(e.toString())));
     } else if (json['mediaUrl'] is String &&
         (json['mediaUrl'] as String).isNotEmpty) {
-      media.add(json['mediaUrl'] as String);
+      media.add(MediaResolver.resolveUrl(json['mediaUrl'] as String));
     }
     final repostedByJson = json['repostedBy'];
     return Post(
