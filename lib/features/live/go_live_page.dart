@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +13,7 @@ import 'frame_broadcaster.dart';
 import 'live_widgets.dart';
 
 /// Broadcaster surface: camera preview, stream setup (title/category),
-/// then live frame broadcasting over the WS relay with chat, gifts and
+/// live broadcasting over Agora RTC engine and WS relay with chat, gifts and
 /// viewer count coming back in realtime.
 class GoLivePage extends StatefulWidget {
   const GoLivePage({super.key});
@@ -30,6 +31,7 @@ class _GoLivePageState extends State<GoLivePage> {
 
   FrameBroadcaster? _broadcaster;
   CameraController? _camera;
+  RtcEngine? _agoraEngine;
   String? _cameraError;
   bool _initializing = true;
   bool _frontCamera = true;
@@ -55,6 +57,8 @@ class _GoLivePageState extends State<GoLivePage> {
     _wsSub?.cancel();
     _clock?.cancel();
     _broadcaster?.dispose();
+    _agoraEngine?.leaveChannel();
+    _agoraEngine?.release();
     _title.dispose();
     WakelockPlus.disable();
     super.dispose();
@@ -121,6 +125,9 @@ class _GoLivePageState extends State<GoLivePage> {
       b.start();
       WakelockPlus.enable();
 
+      // Initialize Agora RTC broadcast streaming channel
+      _startAgoraBroadcast('live_$streamId');
+
       _clock = Timer.periodic(const Duration(seconds: 1), (_) {
         setState(() => _elapsed += const Duration(seconds: 1));
       });
@@ -163,12 +170,48 @@ class _GoLivePageState extends State<GoLivePage> {
     }
   }
 
+  Future<void> _startAgoraBroadcast(String channelName) async {
+    try {
+      final res = await Api.instance
+          .post('/agora/rtc-token', body: {'channel': channelName});
+      final data = res is Map ? Map<String, dynamic>.from(res) : <String, dynamic>{};
+      final token = data['token']?.toString();
+      final appId = data['appId']?.toString();
+      if (token == null || appId == null || token.isEmpty || appId.isEmpty) {
+        return;
+      }
+
+      final engine = createAgoraRtcEngine();
+      await engine.initialize(RtcEngineContext(appId: appId));
+      await engine.enableVideo();
+      await engine.startPreview();
+      await engine.joinChannel(
+        token: token,
+        channelId: channelName,
+        uid: 0,
+        options: const ChannelMediaOptions(
+          clientRoleType: ClientRoleType.clientRoleBroadcaster,
+          channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+        ),
+      );
+      if (mounted) setState(() => _agoraEngine = engine);
+    } catch (e) {
+      debugPrint('[GoLivePage] Agora broadcast init error: $e');
+    }
+  }
+
   Future<void> _endStreamSilently() async {
     if (!_isLive) return;
     _broadcaster?.stop();
     if (_streamId != null) {
       WsService.instance.unsubscribeFromStream(_streamId!);
     }
+    final engine = _agoraEngine;
+    _agoraEngine = null;
+    try {
+      await engine?.leaveChannel();
+      await engine?.release();
+    } catch (_) {}
     Api.instance.post('/live/end').catchError((_) => null);
   }
 

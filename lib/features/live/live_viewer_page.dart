@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -14,9 +15,8 @@ import '../../core/ws_service.dart';
 import '../discover/discover_common.dart';
 import 'live_widgets.dart';
 
-/// Viewer surface: subscribes to the stream over WS, renders the incoming
-/// JPEG frame chunks (`live:chunk`) with gapless Image.memory, and overlays
-/// realtime chat, gifts and the viewer count.
+/// Viewer surface: subscribes to the stream over WS & Agora RTC engine, renders the stream,
+/// and overlays realtime chat, gifts and the viewer count.
 class LiveViewerPage extends StatefulWidget {
   const LiveViewerPage({super.key, required this.streamId});
 
@@ -38,11 +38,14 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
   final _bursts = <Widget>[];
   final _chatInput = TextEditingController();
   StreamSubscription? _wsSub;
+  RtcEngine? _agoraEngine;
+  int? _hostUid;
 
   @override
   void initState() {
     super.initState();
     _join();
+    _joinAgoraChannel();
   }
 
   @override
@@ -50,8 +53,65 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
     WsService.instance.unsubscribeFromStream(widget.streamId);
     _wsSub?.cancel();
     _chatInput.dispose();
+    _leaveAgoraChannel();
     WakelockPlus.disable();
     super.dispose();
+  }
+
+  Future<void> _joinAgoraChannel() async {
+    final channelName = 'live_${widget.streamId}';
+    try {
+      final res = await Api.instance
+          .post('/agora/rtc-token', body: {'channel': channelName});
+      final data = res is Map ? Map<String, dynamic>.from(res) : <String, dynamic>{};
+      final token = data['token']?.toString();
+      final appId = data['appId']?.toString();
+      if (token == null || appId == null || token.isEmpty || appId.isEmpty) {
+        return;
+      }
+
+      final engine = createAgoraRtcEngine();
+      await engine.initialize(RtcEngineContext(appId: appId));
+      engine.registerEventHandler(RtcEngineEventHandler(
+        onUserJoined: (connection, remoteUid, elapsed) {
+          if (mounted) {
+            setState(() {
+              _hostUid = remoteUid;
+              _receivingVideo = true;
+            });
+          }
+        },
+        onUserOffline: (connection, remoteUid, reason) {
+          if (mounted && _hostUid == remoteUid) {
+            setState(() => _hostUid = null);
+          }
+        },
+      ));
+
+      await engine.enableVideo();
+      await engine.joinChannel(
+        token: token,
+        channelId: channelName,
+        uid: 0,
+        options: const ChannelMediaOptions(
+          clientRoleType: ClientRoleType.clientRoleAudience,
+          channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+        ),
+      );
+
+      if (mounted) setState(() => _agoraEngine = engine);
+    } catch (e) {
+      debugPrint('[LiveViewerPage] Agora RTC join error: $e');
+    }
+  }
+
+  Future<void> _leaveAgoraChannel() async {
+    final engine = _agoraEngine;
+    _agoraEngine = null;
+    try {
+      await engine?.leaveChannel();
+      await engine?.release();
+    } catch (_) {}
   }
 
   Future<void> _join() async {
@@ -169,8 +229,16 @@ class _LiveViewerPageState extends State<LiveViewerPage> {
             : Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Video: incoming frames, else the stream poster.
-                  if (_frame != null)
+                  // Video: Agora RTC view, fallback incoming frame, else stream poster.
+                  if (_agoraEngine != null && _hostUid != null)
+                    AgoraVideoView(
+                      controller: VideoViewController.remote(
+                        rtcEngine: _agoraEngine!,
+                        canvas: VideoCanvas(uid: _hostUid),
+                        connection: RtcConnection(channelId: 'live_${widget.streamId}'),
+                      ),
+                    )
+                  else if (_frame != null)
                     Image.memory(_frame!,
                         gaplessPlayback: true, fit: BoxFit.contain)
                   else

@@ -14,7 +14,7 @@ import '../live/live_list_page.dart';
 import '../shell/app_shell.dart';
 
 /// Reels branch index in the bottom nav (see AppShell).
-const _reelsBranchIndex = 3;
+const _reelsBranchIndex = 0;
 
 /// TikTok-style full-screen vertical reels swiper. One video plays at a time;
 /// tap to pause/resume, double-tap to like. When opened from Explore with a
