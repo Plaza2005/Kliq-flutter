@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/backend/telemetry_service.dart';
 import '../../core/theme.dart';
 
 /// Sponsored Ad Card widget that fills the full space of a Reel or Feed Post Card.
@@ -20,6 +21,10 @@ class FullAdCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    TelemetryService.instance.reportAdEvent(
+      adType: isReel ? 'reel_ad' : 'feed_ad',
+      eventType: 'impression',
+    );
     if (isReel) {
       return Container(
         color: Colors.black,
@@ -114,6 +119,10 @@ class FullAdCard extends StatelessWidget {
                         ),
                       ),
                       onPressed: () {
+                        TelemetryService.instance.reportAdEvent(
+                          adType: 'reel_ad',
+                          eventType: 'click',
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Opening sponsored ad...')),
                         );
@@ -207,6 +216,10 @@ class FullAdCard extends StatelessWidget {
                       side: const BorderSide(color: KliqColors.cyan),
                     ),
                     onPressed: () {
+                      TelemetryService.instance.reportAdEvent(
+                        adType: 'feed_ad',
+                        eventType: 'click',
+                      );
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Opening sponsored ad...')),
                       );
