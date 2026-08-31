@@ -1,0 +1,37 @@
+workflows:
+  flutter-workflow:
+    name: KLIQ Flutter App Workflow
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - app_credentials
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Run Static Analysis
+        script: |
+          dart analyze lib/
+      - name: Build Android APK
+        script: |
+          flutter build apk --release
+      - name: Build Web
+        script: |
+          flutter build web --release
+    artifacts:
+      - build/**/outputs/**/*.apk
+      - build/web/**
+    publishing:
+      email:
+        recipients:
+          - dev@kliq.app
+        notify:
+          on_success: true
+          on_failure: true
