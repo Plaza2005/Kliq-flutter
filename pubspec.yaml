@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 0.1.0+1
 
 environment:
-  sdk: ^3.12.2
+  sdk: ">=3.11.0 <4.0.0"
 
 dependencies:
   agora_rtc_engine: ^6.5.2
@@ -30,7 +30,7 @@ dependencies:
   media_kit_video: ^2.0.1
   path_provider: ^2.1.6
   provider: ^6.1.5+1
-  record: ^7.1.1
+  record: ^6.2.1
   share_plus: ^13.2.0
   shared_preferences: ^2.5.5
   supabase_flutter: ^2.16.0
