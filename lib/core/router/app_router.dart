@@ -51,7 +51,7 @@ GoRouter buildRouter(Session session) {
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/home',
-              builder: (c, s) => const HomeFeedPage(),
+              builder: (c, s) => const ReelsPage(),
             ),
           ]),
           StatefulShellBranch(routes: [
@@ -68,8 +68,8 @@ GoRouter buildRouter(Session session) {
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/reels',
-              builder: (c, s) => const ReelsPage(),
+              path: '/friends',
+              builder: (c, s) => const HomeFeedPage(),
             ),
           ]),
           StatefulShellBranch(routes: [

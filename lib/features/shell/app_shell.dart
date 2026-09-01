@@ -5,23 +5,23 @@ import '../../core/theme.dart';
 
 /// The bottom-nav branch index currently shown. Pages that need to know whether
 /// they're the visible tab (e.g. Reels, to stop video playing in the background)
-/// listen to this. Reels is branch index 3.
+/// listen to this. Reels is branch index 0.
 final shellTabIndex = ValueNotifier<int>(0);
 
 /// Main navigation shell: bottom tab bar on compact screens, side rail on
 /// wide screens (web/desktop). The five destinations mirror prot_3's
-/// SwipePager sections: Home, Explore, Create hub, Reels, Profile —
+/// SwipePager sections: Home (Reels), Explore, Create hub, Friends, Profile —
 /// swiping between the top-level branches is handled by the branch pages.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
-  static const _destinations = [
-    (icon: Icons.home_outlined, active: Icons.home, label: 'Home'),
+  static final _destinations = [
+    (icon: Icons.movie_creation_outlined, active: Icons.movie_creation, label: 'Home'),
     (icon: Icons.search_outlined, active: Icons.search, label: 'Explore'),
     (icon: Icons.add_box_outlined, active: Icons.add_box, label: 'Create'),
-    (icon: Icons.movie_creation_outlined, active: Icons.movie_creation, label: 'Reels'),
+    (icon: Icons.people_outline, active: Icons.people, label: 'Friends'),
     (icon: Icons.person_outline, active: Icons.person, label: 'Profile'),
   ];
 

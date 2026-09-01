@@ -40,9 +40,13 @@ class AppConfig {
     defaultValue: 'https://rrkfhfddwpaqwbfcqhtu.supabase.co',
   );
 
-  /// Anon (public) key. Provide via --dart-define=SUPABASE_ANON_KEY=...
+  /// Publishable (public) key. Provide via --dart-define=SUPABASE_PUBLISHABLE_KEY=...
   /// When empty, Supabase init is skipped gracefully.
-  static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const supabasePublishableKey = String.fromEnvironment(
+    'SUPABASE_PUBLISHABLE_KEY',
+    defaultValue: String.fromEnvironment('SUPABASE_ANON_KEY'),
+  );
+  static const supabaseAnonKey = supabasePublishableKey;
 
   // ── Firebase (mirrors prot_3 web client config) ─────────────────────────
   static const firebaseApiKey = 'AIzaSyBXb-EELRMyGMCqE3MdsIqRHb-vfBFFlbc';

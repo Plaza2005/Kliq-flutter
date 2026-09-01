@@ -101,6 +101,8 @@ class WsService {
     _channel?.sink.add(jsonEncode(message));
   }
 
+  void sendRaw(Map<String, dynamic> message) => send(message);
+
   void subscribeToStream(String streamId) {
     _streamSubs.add(streamId);
     send({'type': 'stream:subscribe', 'streamId': streamId});

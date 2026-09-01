@@ -8,6 +8,7 @@ import '../../core/api_client.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
 import '../../core/ws_service.dart';
+import '../common/ad_card.dart';
 import '../shell/action_panel.dart';
 import 'feed_models.dart';
 import 'widgets/post_card.dart';
@@ -219,9 +220,10 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
             )
           else
             SliverList.builder(
-              itemCount: _posts.length + 1,
+              itemCount: _posts.length + (_posts.length ~/ 4) + 1,
               itemBuilder: (context, i) {
-                if (i == _posts.length) {
+                final totalFeedItems = _posts.length + (_posts.length ~/ 4);
+                if (i == totalFeedItems) {
                   return _hasMore || _loadingMore
                       ? const Padding(
                           padding: EdgeInsets.symmetric(vertical: 24),
@@ -236,9 +238,14 @@ class _HomeFeedPageState extends State<HomeFeedPage> {
                         )
                       : const SizedBox(height: 40);
                 }
+                if ((i + 1) % 5 == 0) {
+                  return const FullAdCard(isReel: false);
+                }
+                final postIndex = i - (i ~/ 5);
+                if (postIndex >= _posts.length) return const SizedBox.shrink();
                 return PostCard(
-                    post: _posts[i],
-                    gradientSeed: i,
+                    post: _posts[postIndex],
+                    gradientSeed: postIndex,
                     onChanged: () => _load(reset: true));
               },
             ),

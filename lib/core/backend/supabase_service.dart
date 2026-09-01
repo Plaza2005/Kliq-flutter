@@ -19,9 +19,9 @@ class SupabaseService {
 
   Future<void> init() async {
     if (_initialized) return;
-    if (AppConfig.supabaseAnonKey.isEmpty) {
-      debugPrint('[supabase] no anon key provided '
-          '(--dart-define=SUPABASE_ANON_KEY=...) — skipping init');
+    if (AppConfig.supabasePublishableKey.isEmpty && AppConfig.supabaseAnonKey.isEmpty) {
+      debugPrint('[supabase] no publishable key provided '
+          '(--dart-define=SUPABASE_PUBLISHABLE_KEY=...) — skipping init');
       return;
     }
     try {

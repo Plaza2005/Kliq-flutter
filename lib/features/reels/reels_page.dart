@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../core/ws_service.dart';
+import '../common/ad_card.dart';
 import '../common/comments_sheet.dart';
 import '../common/kliq_video.dart';
 import '../common/share_sheet.dart';
@@ -14,7 +15,7 @@ import '../live/live_list_page.dart';
 import '../shell/app_shell.dart';
 
 /// Reels branch index in the bottom nav (see AppShell).
-const _reelsBranchIndex = 3;
+const _reelsBranchIndex = 0;
 
 /// TikTok-style full-screen vertical reels swiper. One video plays at a time;
 /// tap to pause/resume, double-tap to like. When opened from Explore with a
@@ -81,8 +82,11 @@ class _ReelsPageState extends State<ReelsPage> {
   /// a completed view. Completion rate is the dominant ranking signal.
   void _trackActive(int index) {
     _completeTimer?.cancel();
-    if (index < 0 || index >= _reels.length) return;
-    final id = _reels[index]['id']?.toString();
+    // Skip ad cards (every 5th item)
+    if ((index + 1) % 5 == 0) return;
+    final reelIndex = index - (index ~/ 5);
+    if (reelIndex < 0 || reelIndex >= _reels.length) return;
+    final id = _reels[reelIndex]['id']?.toString();
     if (id == null) return;
     if (_viewed.add(id)) {
       Api.instance.post('/posts/$id/view').catchError((_) => null);
@@ -268,23 +272,32 @@ class _ReelsPageState extends State<ReelsPage> {
         onAction: () => context.go('/create'),
       );
     }
+    // Insert an ad item every 4 reels
+    final totalItems = _reels.length + (_reels.length ~/ 4);
     return PageView.builder(
       controller: _pager,
       scrollDirection: Axis.vertical,
-      itemCount: _reels.length,
+      itemCount: totalItems,
       onPageChanged: (i) {
         setState(() => _current = i);
         _trackActive(i);
       },
-      itemBuilder: (context, i) => _ReelItem(
-        key: ValueKey(_reels[i]['id']),
-        reel: _reels[i],
-        active: i == _current,
-        visible: _visible,
-        onLike: () => _toggleLike(i),
-        onRepost: () => _toggleRepost(i),
-        onSave: () => _toggleSave(i),
-      ),
+      itemBuilder: (context, i) {
+        if ((i + 1) % 5 == 0) {
+          return const FullAdCard(isReel: true);
+        }
+        final reelIndex = i - (i ~/ 5);
+        if (reelIndex >= _reels.length) return const SizedBox.shrink();
+        return _ReelItem(
+          key: ValueKey(_reels[reelIndex]['id']),
+          reel: _reels[reelIndex],
+          active: i == _current,
+          visible: _visible,
+          onLike: () => _toggleLike(reelIndex),
+          onRepost: () => _toggleRepost(reelIndex),
+          onSave: () => _toggleSave(reelIndex),
+        );
+      },
     );
   }
 
