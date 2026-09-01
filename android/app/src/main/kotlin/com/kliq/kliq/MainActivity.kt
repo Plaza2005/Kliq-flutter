@@ -1,0 +1,5 @@
+package com.kliq.kliq
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()

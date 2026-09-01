@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "241767590512",
+    "project_id": "kliq-9a57f",
+    "storage_bucket": "kliq-9a57f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:241767590512:android:bc8e8a3edc5496bbcc62b5",
+        "android_client_info": {
+          "package_name": "com.kliq.kliq"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "241767590512-rg7lfefqosv7f639nmh2tuuuagobluca.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDy2CmE_MW4ImNTylvQIpEFpDVfuV8Aito"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "241767590512-rg7lfefqosv7f639nmh2tuuuagobluca.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
